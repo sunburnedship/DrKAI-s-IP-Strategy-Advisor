@@ -1,0 +1,1600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>IP Strategy Advisor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen app — header, then conversation column + case-file rail (rail becomes a tab under 1000px). */
+:root{
+  --bg:#f7f6f8; --surface:#ffffff; --panel:#f1eff3; --line:#e2dee6; --line2:#cdc7d3;
+  --ink:#1c1820; --ink2:#5b5563; --ink3:#8a8492;
+  --accent:#8c1d40; --accent-ink:#ffffff; --accent-soft:#f6e8ed;
+  --gold:#ffc627; --gold-soft:#fff6d6; --gold-ink:#6b4e00;
+  --go:#1a7f43; --go-bg:#e8f5ec; --stage:#1d5c96; --stage-bg:#e8f0f9;
+  --judge:#8a5d00; --judge-bg:#fdf3dc; --skip:#b3261e; --skip-bg:#fbeae9; --open:#5b5563; --open-bg:#efedf1;
+  --shadow:0 1px 2px rgba(28,24,32,.06),0 4px 16px rgba(28,24,32,.05);
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-head:"Space Grotesk","Inter",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141217; --surface:#1b1920; --panel:#211e26; --line:#33303a; --line2:#45404d;
+  --ink:#eeebf1; --ink2:#b4aebb; --ink3:#857f8d;
+  --accent:#e2789a; --accent-ink:#1b0b11; --accent-soft:#3a1f29;
+  --gold:#ffc627; --gold-soft:#3a3018; --gold-ink:#ffd970;
+  --go:#6fcf97; --go-bg:#16291e; --stage:#7fb4ea; --stage-bg:#16222f;
+  --judge:#f0bf5a; --judge-bg:#2e2512; --skip:#f28b82; --skip-bg:#33191a; --open:#b4aebb; --open-bg:#26232b;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#141217; --surface:#1b1920; --panel:#211e26; --line:#33303a; --line2:#45404d;
+  --ink:#eeebf1; --ink2:#b4aebb; --ink3:#857f8d;
+  --accent:#e2789a; --accent-ink:#1b0b11; --accent-soft:#3a1f29;
+  --gold:#ffc627; --gold-soft:#3a3018; --gold-ink:#ffd970;
+  --go:#6fcf97; --go-bg:#16291e; --stage:#7fb4ea; --stage-bg:#16222f;
+  --judge:#f0bf5a; --judge-bg:#2e2512; --skip:#f28b82; --skip-bg:#33191a; --open:#b4aebb; --open-bg:#26232b;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);margin:0;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--accent)}
+h1,h2,h3,h4{font-family:var(--f-head);margin:0;line-height:1.25;text-wrap:balance}
+.mono{font-family:var(--f-mono)}
+.eyebrow{font:500 11px/1.3 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- shell ---------- */
+.shell{height:100%;display:flex;flex-direction:column}
+.top{flex:0 0 auto;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.top-in{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 260px}
+.seal{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
+  display:grid;place-items:center;font:700 12px/1 var(--f-mono);letter-spacing:.02em;box-shadow:inset 0 0 0 3px var(--surface),0 0 0 1.5px var(--accent)}
+.brand h1{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.brand p{margin:0;font-size:12.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 11.5px/1 var(--f-mono);padding:6px 9px;border-radius:99px;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink2);white-space:nowrap}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--go)}
+.chip.warn .dot{background:var(--judge)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line2);background:var(--surface);
+  color:var(--ink);padding:7px 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--ink3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink2)}
+.btn.ghost:hover{background:var(--panel);color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:5px 9px;font-size:12px}
+
+.tabs{display:none;flex:0 0 auto;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.tabs button{flex:1;border:0;background:none;padding:10px 6px;font-size:13px;font-weight:600;color:var(--ink2);border-bottom:2px solid transparent;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+
+.main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 370px;grid-template-rows:minmax(0,1fr);max-width:1320px;width:100%;margin:0 auto}
+.pane{min-height:0;min-width:0}
+.pane.rail,.pane.law{grid-column:2;grid-row:1}
+.sideseg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+.sideseg button{flex:1;border:0;background:none;border-radius:6px;padding:6px 8px;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer}
+.sideseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+@media (max-width:999px){
+  .tabs{display:flex}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .pane.rail,.pane.law{grid-column:1}
+  .sideseg{display:none}
+}
+
+/* ---------- conversation ---------- */
+.chat{display:flex;flex-direction:column;border-right:1px solid var(--line)}
+@media (max-width:999px){.chat{border-right:0}}
+.log{flex:1 1 auto;overflow-y:auto;padding-block:20px 8px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scroll-behavior:smooth}
+.log-in{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.msg{display:flex;gap:12px;min-width:0}
+.msg .who{flex:0 0 auto;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:600 10.5px/1 var(--f-mono);margin-top:2px}
+.msg.ai .who{background:var(--accent);color:var(--accent-ink)}
+.msg.me{justify-content:flex-end}
+.msg.me .body{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);padding:10px 14px;border-radius:14px 14px 4px 14px;max-width:min(560px,88%)}
+.msg .body{min-width:0;max-width:100%}
+.msg.ai .body{flex:1 1 auto}
+.md p{margin:0 0 .65em}
+.md p:last-child{margin-bottom:0}
+.md ul,.md ol{margin:.2em 0 .7em;padding-left:1.3em}
+.md li{margin:.2em 0}
+.md h3,.md h4{font-size:15.5px;margin:1.1em 0 .45em;color:var(--ink)}
+.md h3:first-child{margin-top:0}
+.md strong{font-weight:650}
+.md code{font:12.5px var(--f-mono);background:var(--panel);padding:1px 5px;border-radius:4px}
+.md blockquote{margin:.4em 0 .8em;padding:.2em 0 .2em 12px;border-left:3px solid var(--gold);color:var(--ink2)}
+.tbl{overflow-x:auto;margin:.4em 0 .9em;border:1px solid var(--line);border-radius:8px}
+.md table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+.md th,.md td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.md th{background:var(--panel);font-weight:600;font-size:12.5px;color:var(--ink2)}
+.md tr:last-child td{border-bottom:0}
+.thinking{display:inline-flex;align-items:center;gap:8px;color:var(--ink3);font-size:13.5px}
+.thinking i{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite ease-in-out}
+.thinking i:nth-child(2){animation-delay:.2s}.thinking i:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+.note{font-size:12.5px;color:var(--ink3);margin-top:6px}
+.err{font-size:13px;color:var(--skip);background:var(--skip-bg);border-radius:8px;padding:8px 12px}
+
+.welcome{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:18px 18px 16px;box-shadow:var(--shadow)}
+.welcome h2{font-size:21px;letter-spacing:-.015em;margin-bottom:6px}
+.welcome p{color:var(--ink2);margin:0 0 12px;max-width:62ch}
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:4px 0 14px}
+@media (max-width:640px){.how{grid-template-columns:1fr}}
+.how div{background:var(--panel);border-radius:9px;padding:10px 12px;font-size:13px;color:var(--ink2)}
+.how b{display:block;font:600 11px/1.3 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+.starters{display:flex;flex-wrap:wrap;gap:8px}
+.starter{border:1px solid var(--line2);background:var(--surface);border-radius:99px;padding:7px 12px;font-size:13px;cursor:pointer;text-align:left}
+.starter:hover{border-color:var(--accent);color:var(--accent)}
+
+.composer{flex:0 0 auto;border-top:1px solid var(--line);background:var(--surface);
+  padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.composer-in{max-width:760px;margin:0 auto}
+.inbox{display:flex;gap:8px;align-items:flex-end;border:1px solid var(--line2);border-radius:12px;padding:6px 6px 6px 12px;background:var(--bg)}
+.inbox:focus-within{border-color:var(--accent)}
+.inbox textarea{flex:1;border:0;background:transparent;resize:none;outline:none;padding:6px 0;max-height:160px;min-height:24px;line-height:1.45}
+.meta-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:11.5px;color:var(--ink3)}
+@keyframes flash{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px var(--gold)}}
+.unavailable.flash{animation:flash .5s 2}
+.unavailable{max-width:760px;margin:0 auto 8px;font-size:13px;background:var(--gold-soft);color:var(--gold-ink);border-radius:8px;padding:9px 12px}
+
+/* ---------- side rail ---------- */
+.rail,.law{flex-direction:column;overflow-y:auto;background:var(--panel);display:flex}
+.rail-in{padding-block:16px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+@media (max-width:999px){.rail-in{max-width:760px;width:100%;margin:0 auto}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.card h3{font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.docket{font:500 11px/1 var(--f-mono);color:var(--ink3);letter-spacing:.04em}
+.stations{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.stations li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;align-items:start;padding:6px 4px;border-radius:7px}
+.stations li.now{background:var(--accent-soft)}
+.st-n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:600 10.5px/1 var(--f-mono);border:1.5px solid var(--line2);color:var(--ink3);background:var(--surface)}
+li.done .st-n{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+li.now .st-n{border-color:var(--accent);color:var(--accent)}
+.st-t{font-size:13px;font-weight:600;line-height:1.3}
+.st-h{font-size:11.5px;color:var(--ink3);line-height:1.35}
+.facts{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:5px 10px;font-size:12.5px;margin:0}
+.facts dt{color:var(--ink3);font:500 11px/1.5 var(--f-mono);text-transform:uppercase;letter-spacing:.04em;padding-top:1px;max-width:120px;overflow-wrap:anywhere}
+.facts dd{margin:0;overflow-wrap:anywhere}
+.empty{font-size:12.5px;color:var(--ink3)}
+.port{display:flex;flex-direction:column;gap:7px}
+.pi{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:8px 10px;border-radius:8px;border:1px solid var(--line)}
+.pi .nm{font-size:13px;font-weight:600;min-width:0}
+.pi .wy{grid-column:1/-1;font-size:12px;color:var(--ink2)}
+.vd{font:600 10px/1 var(--f-mono);text-transform:uppercase;letter-spacing:.06em;padding:4px 7px;border-radius:99px;white-space:nowrap}
+.vd.pursue{background:var(--go-bg);color:var(--go)}
+.vd.stage{background:var(--stage-bg);color:var(--stage)}
+.vd.judgement{background:var(--judge-bg);color:var(--judge)}
+.vd.skip{background:var(--skip-bg);color:var(--skip)}
+.vd.open{background:var(--open-bg);color:var(--open)}
+.memo-cta p{font-size:12.5px;color:var(--ink2);margin:0 0 10px}
+.memo-cta .btn{width:100%}
+.est{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.est div{background:var(--panel);border-radius:8px;padding:8px 10px}
+.est b{display:block;font:600 15px/1.3 var(--f-head);font-variant-numeric:tabular-nums}
+.est span{font-size:11px;color:var(--ink3)}
+
+/* ---------- law & fees ---------- */
+.upd{display:flex;flex-direction:column;gap:10px}
+.u{border-left:3px solid var(--line2);padding:2px 0 2px 10px}
+.u.pending{border-left-color:var(--gold)}
+.u .d{font:500 11px/1.4 var(--f-mono);color:var(--ink3)}
+.u .t{font-size:13px;font-weight:600;line-height:1.35;margin:1px 0 3px}
+.u .x{font-size:12.5px;color:var(--ink2)}
+.u .i{font-size:12.5px;margin-top:3px}
+.u .s{font-size:11.5px}
+.ftbl{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.ftbl th,.ftbl td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.ftbl th:first-child,.ftbl td:first-child{text-align:left;white-space:normal}
+.ftbl th{font:500 10.5px/1.3 var(--f-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)}
+.ftbl .cfr{display:block;font:400 10.5px/1.3 var(--f-mono);color:var(--ink3)}
+.scroll-x{overflow-x:auto}
+details.fold{border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+details.fold summary{cursor:pointer;font-size:13px;font-weight:600}
+.corr{display:flex;flex-direction:column;gap:8px;font-size:12.5px;margin-top:8px}
+.corr div b{display:block;font-weight:600;color:var(--ink2)}
+.srcs{display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.disc{font-size:11.5px;color:var(--ink3);line-height:1.45}
+
+/* ---------- header controls ---------- */
+.ctl{display:flex;align-items:center;gap:6px}
+.ctl label{font:500 10.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px}
+.seg button{border:0;background:none;border-radius:6px;padding:5px 10px;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+.sel{border:1px solid var(--line2);background:var(--surface);border-radius:8px;padding:6px 28px 6px 10px;font-size:12.5px;font-weight:600;
+  appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink3) 50%),linear-gradient(135deg,var(--ink3) 50%,transparent 50%);
+  background-position:calc(100% - 14px) 52%,calc(100% - 9px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+@media (max-width:640px){.top-in{gap:8px}.top-actions{width:100%;gap:6px;flex-wrap:nowrap}.brand p,.ctl label,#asof{display:none}.ctl:first-child{flex:1 1 auto;min-width:0}.ctl:first-child .sel{width:100%}#newCase{padding-inline:8px}}
+
+/* ---------- portable kit ---------- */
+.here{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.kit{flex:1 1 auto;overflow-y:auto;padding-block:20px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.kit-in{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.kit-hero h2{font-size:21px;letter-spacing:-.015em;margin-bottom:6px}
+.kit-hero p{color:var(--ink2);margin:0;max-width:64ch}
+.step{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.step .n{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:600 12px/1 var(--f-mono)}
+.step h3{font-size:15px;margin:3px 0 4px}
+.step p{margin:0 0 10px;color:var(--ink2);font-size:13.5px}
+.step .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.step textarea{width:100%;min-height:84px;border:1px solid var(--line2);border-radius:8px;background:var(--bg);padding:8px 10px;font:12.5px/1.45 var(--f-mono);resize:vertical;margin-bottom:8px}
+.small{font-size:12px;color:var(--ink3)}
+a.btn{text-decoration:none}
+
+/* ---------- cost calculator ---------- */
+.calc{display:flex;flex-direction:column;gap:6px}
+.ci{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface)}
+.ci.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.ci > label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer}
+.ci .opts{display:flex;flex-wrap:wrap;gap:6px 10px;margin:8px 0 2px 24px;font-size:12.5px;color:var(--ink2)}
+.ci .opts label{display:inline-flex;align-items:center;gap:5px}
+.ci select,.ci input[type=number]{border:1px solid var(--line2);background:var(--bg);border-radius:6px;padding:3px 6px;font-size:12.5px;max-width:100%}
+.ci input[type=number]{width:58px}
+.res{font-size:12.5px;font-variant-numeric:tabular-nums}
+.res table{width:100%;border-collapse:collapse}
+.res td{padding:4px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.res td:last-child{text-align:right;white-space:nowrap;padding-left:8px}
+.res .tot td{font-weight:700;border-bottom:0}
+.res h4{font:600 11px/1.3 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin:10px 0 2px}
+
+/* ---------- memo overlay ---------- */
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 45%,transparent);display:flex;align-items:flex-start;justify-content:center;z-index:50;
+  padding:calc(24px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));overflow-y:auto}
+.sheet{background:var(--surface);border-radius:14px;width:100%;max-width:820px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
+.sheet-h h2{font-size:17px}
+.sheet-b{padding:18px 20px 22px}
+.stamp{display:inline-block;font:600 10.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent);border:1.5px solid var(--accent);padding:4px 7px;border-radius:4px;transform:rotate(-2deg)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:13px;padding:8px 14px;border-radius:8px;z-index:60}
+</style>
+
+<div class="shell">
+  <header class="top">
+    <div class="top-in">
+      <div class="brand">
+        <div class="seal" aria-hidden="true">IP</div>
+        <div style="min-width:0">
+          <h1>IP Strategy Advisor</h1>
+          <p>Coaching on what to protect, what it costs, and whether it pays</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="ctl"><label for="provider">Your AI</label>
+          <select class="sel" id="provider">
+            <option value="here">Claude · here</option>
+            <option value="chatgpt">ChatGPT</option>
+            <option value="gemini">Gemini</option>
+            <option value="claude">Claude · own chat</option>
+          </select></div>
+        <div class="ctl"><label>Mode</label><div class="seg" role="group" aria-label="Coaching mode">
+          <button type="button" data-mode="learn" title="Questions first; you reason to the answer">Learn</button>
+          <button type="button" data-mode="decide" title="Fewer questions; costed recommendation sooner">Decide</button>
+        </div></div>
+        <span class="chip" id="asof" title="Fees and legal developments verified on this date"><span class="dot"></span><span id="asofText">Verified 2026-11-10</span></span>
+        <button class="btn ghost sm" id="saveChat" hidden>Save transcript</button>
+        <button class="btn sm" id="newCase">New case</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" id="tab-chat" aria-selected="true" data-pane="chat">Advisor</button>
+    <button role="tab" id="tab-case" aria-selected="false" data-pane="rail">Case</button>
+    <button role="tab" id="tab-costs" aria-selected="false" data-pane="costs">Costs</button>
+    <button role="tab" id="tab-law" aria-selected="false" data-pane="law">Law &amp; fees</button>
+  </nav>
+
+  <div class="main">
+    <section class="pane chat" id="pane-chat" aria-label="Advisor">
+      <div class="here" id="here">
+      <div class="log" id="log"><div class="log-in" id="logIn"></div></div>
+      <div class="composer">
+        <div class="composer-in">
+          <div class="unavailable" id="unavail" hidden><span id="unavailText">Chat on this page runs on your Claude sign-in and only works when the page is opened from claude.ai.</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+              <a class="btn sm primary" id="openHosted" href="https://claude.ai/artifact/4Gok1mUERA1eWSyfhZYs7Z" target="_blank" rel="noopener">Open on claude.ai ↗</a>
+              <button class="btn sm" type="button" id="goClaudeKit">Use Claude in its own chat</button>
+              <button class="btn sm" type="button" id="goKit">Use ChatGPT or Gemini</button>
+            </div></div>
+          <form id="form" autocomplete="off">
+            <div class="inbox">
+              <textarea id="input" aria-label="Message to the advisor" rows="1" placeholder="Describe your idea, product, or question…"></textarea>
+              <button class="btn primary" type="submit" id="send">Send</button>
+              <button class="btn" type="button" id="stop" hidden>Stop</button>
+            </div>
+          </form>
+          <div class="meta-row"><span>Educational strategy guidance, not legal advice. Describe inventions at a functional level.</span><span id="stationNow"></span></div>
+        </div>
+      </div>
+      </div>
+      <div class="kit" id="kit" hidden><div class="kit-in" id="kitIn"></div></div>
+    </section>
+
+    <aside class="pane rail" id="pane-rail" aria-label="Case file">
+      <div class="rail-in">
+        <div class="sideseg" role="group" aria-label="Side panel"><button type="button" data-side="rail">Case file</button><button type="button" data-side="costs">Costs</button><button type="button" data-side="law">Law &amp; fees</button></div>
+        <div class="card">
+          <h3>Discovery path <span class="docket" id="docket"></span></h3>
+          <ol class="stations" id="stations"></ol>
+        </div>
+        <div class="card">
+          <h3>Case facts</h3>
+          <dl class="facts" id="facts"></dl>
+        </div>
+        <div class="card">
+          <h3>Emerging portfolio</h3>
+          <div class="port" id="portfolio"></div>
+        </div>
+        <div class="card memo-cta">
+          <h3>Pathway memo</h3>
+          <p id="memoHint">Itemised near- and long-term costs, timeline, and a worth-it test. Unlocks after the first four stations.</p>
+          <button class="btn primary" id="memoBtn">Draft pathway memo</button>
+          <div class="est" id="estBox" hidden>
+            <div><span>Next 18 months</span><b id="estNear"></b></div>
+            <div><span>Years 2–20</span><b id="estLong"></b></div>
+          </div>
+          <div style="margin-top:8px" id="memoReopen" hidden><button class="btn ghost sm" id="memoOpen">Open last memo</button></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="pane law" id="pane-costs" aria-label="Cost calculator" hidden>
+      <div class="rail-in"><div class="sideseg" role="group" aria-label="Side panel"><button type="button" data-side="rail">Case file</button><button type="button" data-side="costs">Costs</button><button type="button" data-side="law">Law &amp; fees</button></div>
+        <div class="card">
+          <h3>Cost calculator <span class="docket" id="calcAsOf"></span></h3>
+          <p class="disc" style="margin:-4px 0 10px">Pick the plan you're weighing. Government fees are from the verified schedule; professional fees are market ranges.</p>
+          <div class="ctl" style="margin-bottom:8px"><label for="calcEntity">USPTO entity</label>
+            <select class="sel" id="calcEntity"><option value="micro">Micro</option><option value="small">Small (&lt;500 staff)</option><option value="large">Large</option></select></div>
+          <div class="calc" id="calc"></div>
+        </div>
+        <div class="card">
+          <h3>Estimate <button class="btn sm" id="copyEst">Copy as table</button></h3>
+          <div class="res" id="calcRes"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane law" id="pane-law" aria-label="Law and fees" hidden>
+      <div class="rail-in"><div class="sideseg" role="group" aria-label="Side panel"><button type="button" data-side="rail">Case file</button><button type="button" data-side="costs">Costs</button><button type="button" data-side="law">Law &amp; fees</button></div><div id="lawIn" style="display:flex;flex-direction:column;gap:14px"></div></div>
+    </section>
+  </div>
+</div>
+
+<div class="overlay" id="memoOverlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="memoTitle">
+    <div class="sheet-h">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 id="memoTitle">IP Pathway Memo</h2><span class="stamp" id="memoStamp">Draft</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn sm" id="memoCopy">Copy</button>
+        <button class="btn sm" id="memoSave" hidden>Save .md</button>
+        <button class="btn sm" id="memoClose">Close</button>
+      </div>
+    </div>
+    <div class="sheet-b md" id="memoBody"></div>
+  </div>
+</div>
+<div class="overlay" id="copyOverlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="copyTitle">
+    <div class="sheet-h"><h2 id="copyTitle">Copy this text</h2><button class="btn sm" id="copyClose">Done</button></div>
+    <div class="sheet-b"><p class="small" style="margin:0 0 8px">Your browser blocked automatic copying. The text is selected: press Ctrl+C (⌘C on Mac).</p>
+      <textarea id="copyArea" readonly aria-label="Text to copy" style="width:100%;min-height:260px;border:1px solid var(--line2);border-radius:8px;background:var(--bg);padding:8px;font:12px/1.45 var(--f-mono)"></textarea></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script>
+/* ======================================================================
+   KNOWLEDGE BASE — baseline verified 2026-11-10.
+   The page merges newer data from the artifact's db (collection "kb",
+   docs "meta", "updates", "fees") that the monthly refresh task writes.
+   Entity tiers for USPTO patent fees: [large, small, micro].
+   ====================================================================== */
+const KB_BASE = {
+  asOf: "2026-11-10",
+  summary: "USPTO patent fees still follow the 19 Jan 2025 schedule (last revised 1 Nov 2026, foreign PCT fee only). Copyright Office fee increase expected 12 Nov 2026. EPO fees rose ~5% on 1 Apr 2026.",
+
+  fees: {
+    patent: {
+      provisional:     {label:"Provisional application filing fee", cfr:"1.16(d)", fee:[325,130,65]},
+      util_filing:     {label:"Utility basic filing fee", cfr:"1.16(a)", fee:[350,140,70]},
+      util_search:     {label:"Utility search fee", cfr:"1.16(k)", fee:[770,308,154]},
+      util_exam:       {label:"Utility examination fee", cfr:"1.16(o)", fee:[880,352,176]},
+      util_issue:      {label:"Utility issue fee", cfr:"1.18(a)", fee:[1290,516,258]},
+      design_filing:   {label:"Design basic filing fee", cfr:"1.16(b)", fee:[300,120,60]},
+      design_search:   {label:"Design search fee", cfr:"1.16(l)", fee:[300,120,60]},
+      design_exam:     {label:"Design examination fee", cfr:"1.16(p)", fee:[700,280,140]},
+      design_issue:    {label:"Design issue fee", cfr:"1.18(b)(1)", fee:[1300,520,260]},
+      claim_indep:     {label:"Each independent claim over 3", cfr:"1.16(h)", fee:[600,240,120]},
+      claim_excess:    {label:"Each claim over 20", cfr:"1.16(i)", fee:[200,80,40]},
+      track_one:       {label:"Track One prioritized examination", cfr:"1.17(c)", fee:[4515,1806,903]},
+      rce1:            {label:"Request for continued examination, 1st", cfr:"1.17(e)(1)", fee:[1500,600,300]},
+      rce2:            {label:"RCE, 2nd and later", cfr:"1.17(e)(2)", fee:[2860,1144,572]},
+      maint_3_5:       {label:"Maintenance fee at 3.5 years", cfr:"1.20(e)", fee:[2150,860,430]},
+      maint_7_5:       {label:"Maintenance fee at 7.5 years", cfr:"1.20(f)", fee:[4040,1616,808]},
+      maint_11_5:      {label:"Maintenance fee at 11.5 years", cfr:"1.20(g)", fee:[8280,3312,1656]},
+      maint_grace:     {label:"Maintenance fee grace-period surcharge", cfr:"1.20(h)", fee:[540,216,108]},
+      cont_6yr:        {label:"Continuing application filed >6 yrs after earliest benefit date", cfr:"1.17(w)(1)", fee:[2700,1080,540]},
+      cont_9yr:        {label:"Continuing application filed >9 yrs after earliest benefit date", cfr:"1.17(w)(2)", fee:[4000,1600,800]},
+      ids_size_50:     {label:"IDS size fee, cumulative refs 51–100", cfr:"1.17(v)(1)", fee:[200,200,200]},
+      app_size:        {label:"Application size fee, each 50 sheets over 100", cfr:"1.16(s)", fee:[450,180,90]},
+      unint_delay:     {label:"Petition for unintentionally delayed action", cfr:"1.17(m)(1)", fee:[3000,1200,600]}
+    },
+    microIncomeLimit: {value:262380, effective:"2026-09-15", note:"Prior-calendar-year gross income cap for micro entity status; resets each autumn."},
+    trademark: {
+      base:        {label:"Base application, per class", cfr:"2.6(a)(1)(iii)", fee:350},
+      insufficient:{label:"Insufficient-information surcharge, per class", cfr:"2.6(a)(1)(iv)", fee:100},
+      freeform:    {label:"Free-form goods/services text, per class", cfr:"2.6(a)(1)(v)", fee:200},
+      freeform_ext:{label:"Each extra 1,000 characters of free-form text, per class", cfr:"2.6(a)(1)(vi)", fee:200},
+      sou:         {label:"Statement of use (intent-to-use), per class", cfr:"2.6(a)(3)", fee:150},
+      sou_ext:     {label:"Extension of time to file statement of use, per class", cfr:"2.6(a)(4)", fee:125},
+      sec8:        {label:"Section 8 declaration (years 5–6), per class", cfr:"2.6(a)(12)", fee:325},
+      sec8_9:      {label:"Combined Section 8 + 9 renewal (every 10 yrs), per class", cfr:"2.6(a)(5),(12)", fee:650},
+      sec15:       {label:"Section 15 incontestability declaration, per class", cfr:"2.6(a)(13)", fee:250}
+    },
+    copyright: {
+      status: "pending",
+      effective: "2026-11-12",
+      note: "New schedule sent to Congress 14 Jul 2026; may take effect as early as 12 Nov 2026. Confirm on copyright.gov before filing.",
+      rows: [
+        {label:"Single application (1 work, 1 author, not for hire)", now:45, next:55},
+        {label:"Standard electronic application", now:65, next:85},
+        {label:"Paper application", now:125, next:185},
+        {label:"Group of unpublished works", now:85, next:130},
+        {label:"Group of photographs", now:55, next:85},
+        {label:"Group of short online literary works", now:65, next:130},
+        {label:"Group of two-dimensional artworks", now:85, next:130},
+        {label:"Recordation of a transfer, electronic (base)", now:95, next:215},
+        {label:"Special handling (expedited) surcharge", now:800, next:1100}
+      ]
+    },
+    intl: {
+      pct_phase:   {label:"PCT international phase, all-in (filing + search + transmittal)", usd:[3000,4500], note:"PCT international filing fee CHF 1,330; EPO as ISA search fee EUR 1,885 (from 1 Apr 2026)."},
+      ep_entry:    {label:"European regional phase entry, all-in", usd:[4600,7000], note:"EPO official fees from 1 Apr 2026: search EUR 1,595, designation EUR 720, examination EUR 2,010–2,240, claims 16–50 EUR 290 each."},
+      ep_grant:    {label:"EPO grant + unitary patent or national validations", usd:[2500,8000], note:"Grant fee EUR 1,135; unitary patent covers ~18 UPC states in one renewal stream."},
+      jp_entry:    {label:"Japan national phase incl. translation", usd:[5000,9000]},
+      cn_entry:    {label:"China national phase incl. translation", usd:[3000,6000]},
+      kr_entry:    {label:"Korea national phase incl. translation", usd:[3000,5500]},
+      in_entry:    {label:"India national phase", usd:[2000,4000]},
+      ca_entry:    {label:"Canada national phase", usd:[2000,3500]},
+      annuities:   {label:"Foreign annuities over patent life, per major jurisdiction", usd:[15000,30000]},
+      madrid_base: {label:"Madrid Protocol basic fee (WIPO) + USPTO certification", usd:[850,1300], note:"Basic fee CHF 653 (CHF 903 colour) plus USPTO $100 per class certification; per-country fees extra."},
+      madrid_ctry: {label:"Madrid designation, per country per class (typical)", usd:[150,1200]}
+    },
+    pro: {
+      search_pro:   {label:"Professional prior-art search and patentability opinion", usd:[1500,3500]},
+      prov_diy:     {label:"Provisional you prepare (description + labelled drawings)", usd:[0,600]},
+      prov_atty:    {label:"Provisional prepared by an attorney", usd:[2000,4500]},
+      office_action:{label:"Office action response, each (expect 2–3)", usd:[2000,4500]},
+      design_prep:  {label:"Design patent application incl. formal drawings", usd:[1500,3500]},
+      tm_clearance: {label:"Full trademark clearance search and opinion", usd:[1000,3000]},
+      tm_atty:      {label:"Trademark application by attorney, per mark", usd:[1000,2500]},
+      ts_program:   {label:"Trade secret programme setup (inventory, NDAs, access, training)", usd:[3000,15000]},
+      ts_annual:    {label:"Trade secret programme upkeep, per year", usd:[2000,8000]},
+      fto:          {label:"Freedom-to-operate opinion", usd:[5000,25000]},
+      def_pub:      {label:"Defensive publication", usd:[0,500]},
+      litigation:   {label:"Patent litigation through trial, per side", usd:[900000,4000000]},
+      ipr:          {label:"Inter partes review (PTAB), per side", usd:[300000,600000]},
+      byComplexity: [
+        {k:"very_simple", label:"Very simple (ice-cube tray, paper clip, switch)", draft:[6500,9000],  search:[1300,1700]},
+        {k:"simple",      label:"Simple (board game, umbrella, toothbrush)",        draft:[9000,11000], search:[1300,1700]},
+        {k:"some",        label:"Some complexity (power tool, camera, mower)",      draft:[11000,13000],search:[1700,2000]},
+        {k:"medium",      label:"Medium (golf cart, RFID device, phone)",           draft:[13000,15500],search:[2000,2300]},
+        {k:"complex",     label:"Relatively complex (mechanical prosthetic)",       draft:[15500,18000],search:[2300,2700]},
+        {k:"very_complex",label:"Very complex (MRI, satellite, telecom network)",   draft:[18000,21000],search:[2700,3300]},
+        {k:"software",    label:"Software, algorithms, AI, business methods",       draft:[21000,26000],search:[3300,4000]}
+      ]
+    }
+  },
+
+  timelines: [
+    ["Provisional → non-provisional or PCT", "12 months, firm. Priority can be restored up to 2 months late only by petition for unintentional delay; never plan on it."],
+    ["US grace period", "12 months from the inventor's own public disclosure (35 U.S.C. 102(b)(1)). Most other countries, including EPO and China, require absolute novelty: disclose first and foreign rights are usually gone."],
+    ["PCT national/regional phase", "30 months from priority (31 at the EPO). Buys time to decide where to spend."],
+    ["US utility prosecution", "Commonly 2–3+ years to grant; 2–3 office actions are typical. Track One targets a final decision in about 12 months."],
+    ["Design patent", "Roughly 1.5–2 years to grant; term 15 years from grant; no maintenance fees."],
+    ["Utility patent term", "20 years from the earliest non-provisional filing date; maintenance due at 3.5, 7.5 and 11.5 years."],
+    ["Trademark", "First action about 4.5 months (mid-FY2026); registration often 12–18 months without problems. Lasts indefinitely with Section 8 at years 5–6 and 8+9 renewals every 10 years."],
+    ["Copyright", "Exists on creation. Electronic registration commonly 1–3 months. Register before infringement or within 3 months of publication to keep statutory damages and attorney fees; registration is required before suing on a US work."],
+    ["Trade secret", "Protected immediately and for as long as it stays secret and you take reasonable measures."]
+  ],
+
+  updates: [
+    {date:"2026-11-12", area:"Copyright", status:"pending", title:"Copyright Office fee increase expected",
+     detail:"Standard electronic registration $65 → $85; single application $45 → $55; group of photographs $55 → $85; group of short online works $65 → $130; recordation $95 → $215. The schedule went to Congress on 14 Jul 2026 and may take effect from 12 Nov 2026.",
+     impact:"Register key works now if a filing is ready; budget the new rates for anything later.",
+     src:["U.S. Copyright Office fee study 2026","https://www.copyright.gov/rulemaking/feestudy2026/"]},
+    {date:"2026-10-01", area:"Trademark", title:"Madrid e-Filing now required for US-based international marks",
+     detail:"International trademark applications based on a US application or registration must be filed through WIPO's Madrid e-Filing with a WIPO account.",
+     impact:"International brand protection still runs through one US base filing; only the filing route changed.",
+     src:["IP-Coster, Oct 2026","https://ip-coster.com/news/2026-trademark-and-design-updates-us-jersey-and-euipo/503"]},
+    {date:"2026-09-30", area:"Copyright / AI", title:"Third Circuit: training a competing AI tool on Westlaw headnotes was not fair use",
+     detail:"Thomson Reuters v. Ross affirmed the ruling against Ross, the first US appellate decision on fair use in AI training. It involved a non-generative legal search tool that competed with the source, and left generative-AI questions open. Earlier district rulings (Bartz v. Anthropic, Kadrey v. Meta, 2025) found training on lawfully acquired works can be fair use.",
+     impact:"AI startups: licence or document the provenance of training data, especially if the product competes with the source.",
+     src:["IPWatchdog, 30 Sep 2026","https://ipwatchdog.com/2026/09/30/third-circuit-affirms-revised-fair-use-ruling-against-ross-ai-legal-research-platform-in-sealed-opinion/"]},
+    {date:"2026-09-29", area:"Patent eligibility", title:"§101 for AI and software: friendlier at the USPTO, stricter in court",
+     detail:"Ex parte Desjardins (precedential, Sept 2025) treats an ML training method that improves how the computer works as eligible, and is now in the MPEP. Applicants can file Subject Matter Eligibility Declarations (SMEDs, memos Dec 2025, Apr 2026, Sept 2026). The Federal Circuit in Recentive Analytics v. Fox (18 Apr 2025) held that applying generic machine learning to a new data environment is ineligible. Alice/Mayo still governs; PERA has not passed.",
+     impact:"Claim the specific technical improvement, not the business result. A granted software patent can still fall in litigation.",
+     src:["USPTO SMED memo, 29 Sep 2026","https://www.uspto.gov/sites/default/files/documents/smeds-memo-20260929.pdf"]},
+    {date:"2026-09-15", area:"Patent fees", title:"Micro entity income limit now $262,380",
+     detail:"Gross income in the prior calendar year must not exceed $262,380 for fees paid on or after 15 Sep 2026. Micro entities pay 20% of large-entity fees; small entities (<500 employees) pay 40%.",
+     impact:"Many student teams and solo founders qualify for micro status; university-affiliated inventors may also qualify through the institution route.",
+     src:["USPTO micro entity limit","https://www.uspto.gov/patents/laws/micro-entity-status-gross-income-limit"]},
+    {date:"2026-09-02", area:"USPTO", title:"USPTO fee-setting authority extended only to 11 Dec 2026",
+     detail:"P.L. 119-103 extended the AIA Section 10 fee-setting authority from 16 Sep to 11 Dec 2026. Current fees stay in force; a longer renewal is pending.",
+     impact:"No fee change today. Re-check the schedule if you plan a filing in 2027.",
+     src:["IPO legislative tracker, 1 Oct 2026","https://ipo.org/wp-content/uploads/2026/10/IPO-Legislative-Tracker-Oct-1-20206.pdf"]},
+    {date:"2026-07-22", area:"PTAB", title:"IPR is no longer a cheap, reliable invalidity route",
+     detail:"Since 2025 the Director decides discretionary denials, weighing 'settled expectations' (patent age), delay, prior validity rulings, parallel trial timing and, since Mar 2026, US manufacturing and small-business status. About 40% of petitions were instituted in FY2026 (35% in electrical/computer arts). A final rule went to OIRA on 22 Jul 2026; Supreme Court petitions on the denials are pending.",
+     impact:"Patent owners: older patents are sturdier. Accused startups: plan on district court or ex parte reexamination; the one-year IPR clock still runs from service of a complaint.",
+     src:["Patrick IP Law, updated 30 Oct 2026","https://blog.patrickiplaw.com/the-director-s-ipr-denials-are-now-before-the-supreme-court"]},
+    {date:"2026-07-20", area:"Patent", title:"Foreign-domiciled applicants must use a registered practitioner",
+     detail:"Patent applicants and owners domiciled outside the US must be represented by a USPTO-registered practitioner, including for micro entity certifications.",
+     impact:"International co-founders filing on their own need US counsel.",
+     src:["USPTO micro entity page","https://www.uspto.gov/patents/laws/micro-entity-status-gross-income-limit"]},
+    {date:"2026-07-14", area:"Legislation", title:"PERA, PREVAIL and RESTORE remain in committee",
+     detail:"Senate Judiciary held a full-committee hearing on PERA on 14 Jul 2026; no markup reported by 1 Oct 2026. PREVAIL (PTAB reform) and RESTORE (injunction presumption) are also in committee. The NO FAKES Act (digital replicas) was reported by Senate Judiciary on 24 Jun 2026.",
+     impact:"Plan on current law. Do not build a software or diagnostics strategy around PERA passing.",
+     src:["IPO legislative tracker, 1 Oct 2026","https://ipo.org/wp-content/uploads/2026/10/IPO-Legislative-Tracker-Oct-1-20206.pdf"]},
+    {date:"2026-06-04", area:"Patent / pharma", title:"Hikma v. Amarin narrows skinny-label inducement",
+     detail:"The Supreme Court (9-0) narrowed induced-infringement exposure for generic drugs marketed with carved-out ('skinny') labels.",
+     impact:"Relevant to life-science teams weighing method-of-use patents against generic entry.",
+     src:["IPO legislative tracker, 1 Oct 2026","https://ipo.org/wp-content/uploads/2026/10/IPO-Legislative-Tracker-Oct-1-20206.pdf"]},
+    {date:"2026-04-01", area:"International", title:"EPO official fees up about 5%",
+     detail:"Search EUR 1,595; designation EUR 720; examination EUR 2,010 (EUR 2,240 without supplementary search); grant EUR 1,135; claims 16–50 EUR 290 each; renewal year 3 EUR 725. Filing fee, opposition and unitary patent renewal fees unchanged.",
+     impact:"European coverage remains the largest single foreign cost; decide at 30–31 months, not at filing.",
+     src:["Fish & Richardson","https://www.fr.com/news-insights/articles/european-patent-officeto-increase-fees-on-april-1-2026/"]},
+    {date:"2026-03-02", area:"Copyright / AI", title:"Human authorship rule stands: Supreme Court denies Thaler",
+     detail:"Cert denied in Thaler v. Perlmutter. Works generated solely by AI cannot be registered; AI-assisted works are protected to the extent of human creative contribution (Copyright Office Part 2 report, Jan 2025).",
+     impact:"Document the human selection, arrangement and editing in AI-assisted content you want to own.",
+     src:["Morgan Lewis, Mar 2026","https://morganlewis.com/pubs/2026/03/us-supreme-court-declines-to-consider-whether-ai-alone-can-create-copyrighted-works"]},
+    {date:"2026-07-09", area:"Trade secrets", title:"Trade secret litigation keeps rising; noncompetes keep shrinking",
+     detail:"Federal trade secret filings reached 1,552 in 2025 (+20%); AI-related filings rose 92% in the second half of 2025. The FTC abandoned its nationwide noncompete rule in Sept 2025 and enforces case by case. States keep restricting noncompetes: Washington HB 1155 voids them from 30 Jun 2027; Virginia, Tennessee and Utah changed rules in 2026.",
+     impact:"Confidentiality agreements, invention assignments and access controls now carry the protection noncompetes used to.",
+     src:["Thompson Hine Trade Secret Quarterly, Jul 2026","https://www.thompsonhine.com/insights/trade-secret-quarterly-july-2026/"]},
+    {date:"2025-11-28", area:"Patent / AI", title:"AI-assisted inventions: only humans invent",
+     detail:"The USPTO rescinded its Feb 2024 guidance. AI is treated as a tool; a natural person must have conceived each claimed invention. Naming an AI as inventor is rejected.",
+     impact:"Keep lab notebooks or commit logs showing who conceived each claimed feature when AI tools were used.",
+     src:["Mayer Brown, Dec 2025","https://www.mayerbrown.com/en/insights/publications/2025/12/united-states-patent-and-trademark-office-issues-revised-guidance-on-inventorship-for-ai-assisted-inventions"]},
+    {date:"2025-01-19", area:"Patent fees", title:"Current USPTO patent fee schedule",
+     detail:"Late continuations now cost $2,700/$4,000 (large) beyond 6/9 years; IDS size fees for large reference dumps. Schedule last revised 1 Nov 2026 for a foreign PCT fee only.",
+     impact:"Long continuation families cost more than before.",
+     src:["USPTO fee schedule","https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule"]},
+    {date:"2025-01-18", area:"Trademark fees", title:"Trademark filing is surcharge-driven",
+     detail:"One $350 base fee per class; +$100 per class for insufficient information; +$200 per class for free-form goods/services text; +$200 per extra 1,000 characters. Unchanged as of Nov 2026.",
+     impact:"Copy the USPTO ID Manual wording exactly to avoid $200–$300 per class in surcharges.",
+     src:["USPTO trademark fees","https://www.uspto.gov/trademarks/trademark-fee-information"]},
+    {date:"2024-05-21", area:"Design patents", title:"LKQ v. GM changes design-patent obviousness",
+     detail:"The en banc Federal Circuit replaced the rigid Rosen-Durling test with a flexible, KSR-style analysis.",
+     impact:"Design patents are somewhat easier to challenge; pair them with trade dress and strong branding.",
+     src:["Morrison Foerster, May 2024","https://www.mofo.com/resources/insights/240523-federal-circuit-overrules-obviousness-test-for-design-patents"]}
+  ],
+
+  corrections: [
+    ["IP I lecture and IP Strategy flowchart: 'Check TESS'", "TESS was retired in Nov 2023. Use USPTO Trademark Search (tmsearch.uspto.gov)."],
+    ["IP Strategy flowchart: fashion, food, furniture or hairstyle → 'No protection'", "Overstated. Useful articles are not copyrightable as such, but ornamental designs of furniture and apparel can get design patents (15 years) and trade dress; fabric prints and graphics can be copyrighted (Star Athletica, 2017); recipes and processes can be trade secrets; brand names are always trademarkable."],
+    ["FTO flowchart: publicly disclosed or crowdfunded before filing → 'may not be patentable'", "US: the inventor's own disclosure opens a 12-month grace period, so a US patent is still possible inside that window. Abroad (EPO, China and most others): absolute novelty, so foreign rights are usually lost. A crowdfunding campaign is both a public disclosure and an offer for sale."],
+    ["Patent Legal Workflow: provisional '~$150–$250'", "USPTO fee is now $65 micro / $130 small / $325 large (Jan 2025)."],
+    ["Patent Legal Workflow: attorney '$8K–$16K'; search '$1K–$2K'", "2026 ranges: drafting $6.5K–$26K by complexity; professional search $1.3K–$4K."],
+    ["Patent Legal Workflow: existing patents found → 'Back to drawing board'", "Also: design around (Sorenson's dimpled sleeve around Coffin's patent), narrow your claims, license, or wait for expiry. Expired patents are free to practise."],
+    ["Patent Legal Workflow: '~17–20 year protection'", "20 years from the earliest non-provisional filing; effective life is shorter by pendency, partly restored by patent term adjustment. Design patents: 15 years from grant."],
+    ["Disclosure guide / IP II: pay for 'stealth mode' nonpublication on a provisional", "Provisionals are never published. A nonpublication request is free, applies only to non-provisionals, and is barred if you file abroad or under the PCT."],
+    ["Disclosure guide: large-entity provisional ~$260", "Now $325."],
+    ["IP I: 'Copyright — poor for software'", "Still mostly true for function. Copyright protects code as written, not what it does; reimplementing an API was fair use in Google v. Oracle (2021). Software function is protected by patent (subject to §101) or trade secret."]
+  ],
+
+  sources: [
+    ["USPTO fee schedule","https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule"],
+    ["USPTO trademark fee information","https://www.uspto.gov/trademarks/trademark-fee-information"],
+    ["USPTO micro entity income limit","https://www.uspto.gov/patents/laws/micro-entity-status-gross-income-limit"],
+    ["U.S. Copyright Office fees","https://www.copyright.gov/about/fees.html"],
+    ["Copyright Office 2026 fee study","https://www.copyright.gov/rulemaking/feestudy2026/"],
+    ["WIPO PCT fee tables","https://www.wipo.int/pct/en/fees/"],
+    ["EPO fees","https://www.epo.org/en/applying/fees"],
+    ["Google Patents","https://patents.google.com/"],
+    ["USPTO Patent Public Search","https://ppubs.uspto.gov/pubwebapp/"],
+    ["USPTO Trademark Search","https://tmsearch.uspto.gov/"],
+    ["USPTO Trademark ID Manual","https://idm-tmng.uspto.gov/id-master-list-public.html"],
+    ["AIPLA Report of the Economic Survey","https://www.aipla.org/"]
+  ]
+};
+/* ======================================================================
+   ENGINE — knowledge-base merge, cost estimator, prompt builders.
+   ====================================================================== */
+let KB = JSON.parse(JSON.stringify(KB_BASE));
+const TI = {large:0, small:1, micro:2};
+const TIER_LABEL = {large:"Large entity", small:"Small entity (<500 employees)", micro:"Micro entity"};
+
+function deepMerge(t, s){
+  if(!s || typeof s!=="object") return t;
+  for(const k of Object.keys(s)){
+    const v=s[k];
+    if(v && typeof v==="object" && !Array.isArray(v) && t[k] && typeof t[k]==="object" && !Array.isArray(t[k])) deepMerge(t[k], v);
+    else t[k]=v;
+  }
+  return t;
+}
+/* Apply a db refresh: meta {asOf, summary}, updates {items}, fees {patch}, corrections {items} */
+function applyRemoteKB(meta, updates, fees, corr){
+  const next = JSON.parse(JSON.stringify(KB_BASE));
+  if(fees && fees.patch) deepMerge(next.fees, fees.patch);
+  if(updates && Array.isArray(updates.items) && updates.items.length){
+    const seen=new Set(updates.items.map(u=>u.title));
+    next.updates = updates.items.concat(next.updates.filter(u=>!seen.has(u.title)));
+  }
+  if(corr && Array.isArray(corr.items) && corr.items.length) next.corrections = corr.items;
+  if(meta && meta.asOf && String(meta.asOf) > next.asOf){ next.asOf=String(meta.asOf); if(meta.summary) next.summary=String(meta.summary); }
+  next.updates.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  KB = next;
+}
+
+const usd = n => "$" + Math.round(n).toLocaleString("en-US");
+const rng = (lo,hi) => lo===hi ? usd(lo) : usd(lo)+"–"+usd(hi);
+function pf(key, tier){ const f=KB.fees.patent[key]; return f ? f.fee[TI[tier]] : 0; }
+function pro(key){ return KB.fees.pro[key].usd; }
+function copyrightRate(row){
+  const c=KB.fees.copyright;
+  const today=new Date().toISOString().slice(0,10);
+  return (c.status==="final" || today>=c.effective) && row.next ? row.next : row.now;
+}
+
+/* ---------------- cost estimator ----------------
+   plan items:
+   {type:"provisional", prep:"diy"|"attorney", count}
+   {type:"utility", complexity, search:bool, track_one:bool, office_actions, maintain_years}
+   {type:"design", count}
+   {type:"trademark", marks, classes, clearance:bool, attorney:bool, intent_to_use:bool}
+   {type:"copyright", works, kind:"standard"|"single"|"group"}
+   {type:"trade_secret", years}
+   {type:"fto", density:"low"|"medium"|"high"}
+   {type:"pct", countries:["EP","JP","CN","KR","IN","CA"]}
+   {type:"madrid", countries, classes}
+   {type:"defensive_publication"}
+-------------------------------------------------- */
+function estimateCosts(input){
+  const tier = (input && TI[input.entity]!==undefined) ? input.entity : "small";
+  const plan = Array.isArray(input && input.plan) ? input.plan : [];
+  const near=[], long=[], notes=[];
+  const add=(arr,item,lo,hi,note)=>arr.push({item, lo:Math.round(lo), hi:Math.round(hi), note:note||""});
+  const num=(v,d)=>{const n=Number(v); return isFinite(n)&&n>0?n:d;};
+
+  for(const p of plan){
+    const t=String(p.type||"").toLowerCase();
+    if(t==="provisional"){
+      const n=num(p.count,1), f=pf("provisional",tier);
+      add(near,"Provisional application, USPTO fee"+(n>1?" ×"+n:""), f*n, f*n, "37 CFR "+KB.fees.patent.provisional.cfr);
+      const prep = p.prep==="diy" ? pro("prov_diy") : pro("prov_atty");
+      add(near,"Provisional preparation ("+(p.prep==="diy"?"self-prepared":"attorney")+")", prep[0]*n, prep[1]*n, "Lapses unless converted within 12 months");
+    }
+    else if(t==="utility"){
+      const c = KB.fees.pro.byComplexity.find(x=>x.k===p.complexity) || KB.fees.pro.byComplexity.find(x=>x.k==="medium");
+      if(p.search!==false) add(near,"Professional prior-art search", c.search[0], c.search[1], c.label);
+      add(near,"Attorney drafting and filing", c.draft[0], c.draft[1], c.label);
+      const gov = pf("util_filing",tier)+pf("util_search",tier)+pf("util_exam",tier);
+      add(near,"USPTO filing + search + examination", gov, gov, TIER_LABEL[tier]);
+      if(p.track_one) add(near,"Track One prioritized examination", pf("track_one",tier), pf("track_one",tier), "Decision in ~12 months");
+      const oa=num(p.office_actions,0);
+      const oaLo = oa||2, oaHi = oa||3;
+      add(long,"Office action responses ("+(oa?oa:"2–3")+" expected)", pro("office_action")[0]*oaLo, pro("office_action")[1]*oaHi, "Prosecution runs 2–3+ years");
+      add(long,"Issue fee", pf("util_issue",tier), pf("util_issue",tier), "");
+      const yrs=num(p.maintain_years,20);
+      let m=0, parts=[];
+      if(yrs>3.5){m+=pf("maint_3_5",tier);parts.push(usd(pf("maint_3_5",tier)));}
+      if(yrs>7.5){m+=pf("maint_7_5",tier);parts.push(usd(pf("maint_7_5",tier)));}
+      if(yrs>11.5){m+=pf("maint_11_5",tier);parts.push(usd(pf("maint_11_5",tier)));}
+      if(m) add(long,"Maintenance fees (government only)", m, m, parts.join(" + ")+" at 3.5 / 7.5 / 11.5 yrs");
+      if(p.complexity==="software") notes.push("Software/AI claims carry §101 eligibility risk (Alice; Recentive v. Fox). Budget for more office actions.");
+    }
+    else if(t==="design"){
+      const n=num(p.count,1);
+      const gov=pf("design_filing",tier)+pf("design_search",tier)+pf("design_exam",tier);
+      add(near,"Design patent preparation and drawings"+(n>1?" ×"+n:""), pro("design_prep")[0]*n, pro("design_prep")[1]*n, "");
+      add(near,"USPTO design filing + search + examination"+(n>1?" ×"+n:""), gov*n, gov*n, TIER_LABEL[tier]);
+      add(long,"Design issue fee"+(n>1?" ×"+n:""), pf("design_issue",tier)*n, pf("design_issue",tier)*n, "15-year term from grant, no maintenance fees");
+    }
+    else if(t==="trademark"){
+      const marks=num(p.marks,1), cls=num(p.classes,1), tm=KB.fees.trademark;
+      if(p.clearance!==false) add(near,"Clearance search"+(marks>1?" ×"+marks:""), pro("tm_clearance")[0]*marks, pro("tm_clearance")[1]*marks, "DIY knockout search on tmsearch.uspto.gov is free");
+      add(near,"USPTO application ("+marks+" mark"+(marks>1?"s":"")+" × "+cls+" class"+(cls>1?"es":"")+")", tm.base.fee*marks*cls, (tm.base.fee+tm.freeform.fee)*marks*cls, "Low end assumes ID Manual wording; high end adds free-form surcharge");
+      if(p.attorney) add(near,"Attorney preparation", pro("tm_atty")[0]*marks, pro("tm_atty")[1]*marks, "");
+      if(p.intent_to_use) add(near,"Statement of use", tm.sou.fee*marks*cls, (tm.sou.fee+tm.sou_ext.fee)*marks*cls, "Intent-to-use filings only");
+      add(long,"Section 8 declaration, years 5–6", tm.sec8.fee*marks*cls, tm.sec8.fee*marks*cls, "");
+      add(long,"Section 8 + 9 renewal at year 10", tm.sec8_9.fee*marks*cls, tm.sec8_9.fee*marks*cls, "Repeats every 10 years");
+    }
+    else if(t==="copyright"){
+      const n=num(p.works,1), c=KB.fees.copyright;
+      const row = p.kind==="single" ? c.rows[0] : p.kind==="group" ? c.rows[3] : c.rows[1];
+      const r = copyrightRate(row);
+      add(near,"Copyright registration ("+(p.kind||"standard")+")"+(n>1?" ×"+n:""), r*n, (row.next||r)*n, c.status==="final"?"":"Rates rise from "+usd(row.now)+" to "+usd(row.next)+" (expected "+c.effective+")");
+    }
+    else if(t==="trade_secret"){
+      const yrs=num(p.years,5);
+      add(near,"Trade secret programme setup", pro("ts_program")[0], pro("ts_program")[1], "NDAs, invention assignment, access control, marking, training");
+      add(long,"Programme upkeep ("+yrs+" yrs)", pro("ts_annual")[0]*yrs, pro("ts_annual")[1]*yrs, "Exit interviews, audits, onboarding");
+    }
+    else if(t==="fto"){
+      const f=pro("fto"), d=p.density;
+      const lo = d==="low"?f[0]:d==="high"?15000:8000, hi = d==="low"?10000:d==="high"?f[1]:18000;
+      add(near,"Freedom-to-operate opinion", lo, hi, "Scales with how crowded the patent landscape is");
+    }
+    else if(t==="pct"){
+      const I=KB.fees.intl;
+      add(near,"PCT international phase", I.pct_phase.usd[0], I.pct_phase.usd[1], "File within 12 months of priority");
+      const map={EP:"ep_entry",JP:"jp_entry",CN:"cn_entry",KR:"kr_entry",IN:"in_entry",CA:"ca_entry"};
+      const cs=(Array.isArray(p.countries)?p.countries:[]).map(x=>String(x).toUpperCase()).filter(x=>map[x]);
+      cs.forEach(cc=>{
+        const e=I[map[cc]];
+        add(long, e.label, e.usd[0], e.usd[1], "At 30 months from priority"+(cc==="EP"?" (31 at EPO)":""));
+        if(cc==="EP") add(long, I.ep_grant.label, I.ep_grant.usd[0], I.ep_grant.usd[1], "");
+      });
+      if(cs.length) add(long,"Foreign annuities over patent life ("+cs.length+" jurisdiction"+(cs.length>1?"s":"")+")", I.annuities.usd[0]*cs.length, I.annuities.usd[1]*cs.length, "The cost most budgets miss");
+    }
+    else if(t==="madrid"){
+      const n=num(p.country_count, Array.isArray(p.countries)?(p.countries.length||3):num(p.countries,3)), cls=num(p.classes,1), I=KB.fees.intl;
+      add(near,"Madrid basic fee + USPTO certification", I.madrid_base.usd[0], I.madrid_base.usd[1], "");
+      add(near,"Madrid designations ("+n+" countr"+(n>1?"ies":"y")+" × "+cls+" class"+(cls>1?"es":"")+")", I.madrid_ctry.usd[0]*n*cls, I.madrid_ctry.usd[1]*n*cls, "Per-country fees vary widely");
+    }
+    else if(t==="defensive_publication"){
+      add(near,"Defensive publication", pro("def_pub")[0], pro("def_pub")[1], "Permanent prior art; gives up your own patent rights");
+    }
+  }
+  const sum=(a,k)=>a.reduce((s,x)=>s+x[k],0);
+  return {
+    asOf: KB.asOf, entity: tier, entityLabel: TIER_LABEL[tier],
+    near, long, notes,
+    totals: {nearLo:sum(near,"lo"), nearHi:sum(near,"hi"), longLo:sum(long,"lo"), longHi:sum(long,"hi")},
+    excluded: "Enforcement is not included: patent litigation runs "+rng(...pro("litigation"))+" per side; an IPR "+rng(...pro("ipr"))+"."
+  };
+}
+
+/* ---------------- knowledge-base digest for prompts ---------------- */
+function kbDigest(){
+  const F=KB.fees, L=[];
+  L.push("KNOWLEDGE BASE — verified as of "+KB.asOf+". "+KB.summary);
+  L.push("\nUSPTO PATENT FEES (large / small / micro, USD):");
+  Object.values(F.patent).forEach(f=>L.push("- "+f.label+" ["+f.cfr+"]: "+f.fee.join(" / ")));
+  L.push("- Micro entity income limit: "+usd(F.microIncomeLimit.value)+" (from "+F.microIncomeLimit.effective+").");
+  L.push("\nUSPTO TRADEMARK FEES (per class): "+Object.values(F.trademark).map(f=>f.label+" $"+f.fee).join("; "));
+  L.push("\nCOPYRIGHT FEES (now → "+F.copyright.status+" from "+F.copyright.effective+"): "+F.copyright.rows.map(r=>r.label+" $"+r.now+" → $"+r.next).join("; ")+". "+F.copyright.note);
+  L.push("\nINTERNATIONAL (typical all-in USD): "+Object.values(F.intl).map(f=>f.label+" "+rng(f.usd[0],f.usd[1])+(f.note?" ("+f.note+")":"")).join("; "));
+  L.push("\nPROFESSIONAL FEES (market estimates, AIPLA 2025 + 2026 market): "+["search_pro","prov_diy","prov_atty","office_action","design_prep","tm_clearance","tm_atty","ts_program","ts_annual","fto","def_pub","litigation","ipr"].map(k=>F.pro[k].label+" "+rng(...F.pro[k].usd)).join("; "));
+  L.push("Utility drafting by complexity (drafting / search): "+F.pro.byComplexity.map(c=>c.label+" "+rng(...c.draft)+" / "+rng(...c.search)).join("; "));
+  L.push("\nTIMELINES AND TERMS:");
+  KB.timelines.forEach(t=>L.push("- "+t[0]+": "+t[1]));
+  L.push("\nRECENT LEGAL AND POLICY DEVELOPMENTS (newest first):");
+  KB.updates.forEach(u=>L.push("- ["+u.date+(u.status==="pending"?", pending":"")+"] "+u.area+" — "+u.title+". "+u.detail+" Implication: "+u.impact));
+  L.push("\nCORRECTIONS TO THE COURSE FLOWCHARTS AND LECTURES (apply these when you cite the course materials):");
+  KB.corrections.forEach(c=>L.push("- "+c[0]+" → "+c[1]));
+  return L.join("\n");
+}
+
+const STATIONS = [
+  {id:"situation", n:1, name:"Situation", hint:"Who you are, entity size, industry, product or service, stage"},
+  {id:"assets",    n:2, name:"Assets",    hint:"What is new: function, look, process, software, data, brand, content"},
+  {id:"timing",    n:3, name:"Timing & ownership", hint:"Disclosures, crowdfunding, sales, assignments, prior-art search"},
+  {id:"market",    n:4, name:"Market & enforcement", hint:"Product life, copyability, detection, competitors, countries"},
+  {id:"money",     n:5, name:"Money & purpose", hint:"Budget, runway, what you need IP to do"},
+  {id:"pathway",   n:6, name:"Pathway", hint:"Portfolio, sequence, cost, and whether it pays"}
+];
+
+const FRAMEWORKS = `COURSE FRAMEWORKS (Dr. Chad Kennedy, IP I: Types and Costs; IP II: Patent Strategy by and for Entrepreneurs; Entrepreneur's Guide to Preparing a Patent Disclosure):
+- IP types: utility patent (novel, useful, non-obvious; 20 yrs), design patent (ornamental design; 15 yrs), plant patent (asexually reproduced plant), trademark/service mark (word or symbol; lasts with use and renewal), copyright (original expression; life + 70), trade secret (proprietary and useful; lasts while secret; reasonable measures required). Industrial design abroad (Hague Agreement).
+- Value: IP is often 45–75% of Fortune 500 asset value, yet many small-company patents never pay back. Ask "What do I WANT a patent on?" (commercial value, how competitors would use it), not "What CAN I get a patent on?"
+- Design Embodiment Stage: major concepts and geometry set, architecture set, past proof of concept, budget roughed out (MVP/beta). This is the stage to seriously consider a provisional, and to set up trademarks and branding.
+- Trademark distinctiveness spectrum: generic (unprotectable) → descriptive → suggestive → arbitrary → fanciful (strongest). House marks vs product marks. Use TM/SM before registration, ® only after.
+- Copyright: arises on creation, protects expression not ideas; ownership sits with the author unless assigned or work-for-hire; open source and Creative Commons for sharing.
+- Trade secrets: NDAs, confidential markings, employee education, access control; does not stop independent development or reverse engineering.
+- IP Strategy Flow (idea → check marks/copyright/patent databases → is it novel in function → can you keep it secret for the life of the company? yes → trade secret; no → utility patent; unique shape → design patent; then patent similar approaches proactively; if someone holds a live patent → license, design around, or abandon; expired → free to use and improve).
+- Freedom-to-Operate flow: disclosed before filing? crowdfunded before filing? existing IP on the tech? assigned to your entity? can you license? → proceed to make/sell/license, or stop.
+- Patent Legal Workflow: long-term value (>5 yrs)? sell for <3 yrs → no patent or provisional only; team prior-art search; existing patents?; good writing skills → self-file provisional with labelled drawings, no claims; engage attorney; examiner cycle 2–4 yrs; grant.
+- DREAMER disclosure process: Develop strategy, Review prior art (5+ pertinent patents; Google Patents, USPTO, WIPO, Amazon/Alibaba for products), Expand claim outline (hierarchy: Claim X = A + B + C; A = i + j + k…; "comprising"), Articulate description (title, inventors, field, background, summary, drawings numbered 10, 11, 12…, detailed description, best mode, alternative embodiments), Modify and refine claims with an attorney you manage like any vendor, Execute application, Reflect.
+- Provisionals: patent pending, priority date, 12-month clock, do not start the term; what you fail to disclose is not protected; "rolling provisionals" when cash is short (risk: a competitor files first). Sometimes the rational choice is never to convert (product life under 3–4 years, fast-moving markets like toys).
+- First-inventor-to-file since 16 Mar 2013. NDAs for beta testers to avoid public disclosure.
+- Claims example: Coffin coffee-cup sleeve (US 5,205,473) and Sorenson's dimpled sleeve (US 5,425,497) designed around it.
+- Strategy cases: Apple (patent everything, iPhone design + utility portfolio) vs Tesla (opened its patents in 2014 to grow the EV market; keeps trade secrets and manufacturing know-how).
+- Managing attorneys: lawyers know law, you own cash flow; ask for the cost of each action ahead of time.`;
+
+const CORE_RULES = `You are the IP Strategy Advisor, a coach for Arizona State University's Technological Entrepreneurship and Management program, built on Dr. Chad Kennedy's IP I and IP II frameworks. You help students, founders and company teams decide which intellectual-property investments fit their situation, what they cost now and over time, and whether they will pay off. You take the business-strategy view, not a patent attorney's filing view. You weigh the legal view, and you say plainly that many IP investments do not pay back.
+
+DISCOVERY PATH — six stations. Adapt the order when the situation demands it (an imminent public disclosure jumps to S3):
+S1 Situation — who they are (student team, solo founder, startup, small/medium business, large organization), USPTO entity size (micro/small/large), industry, product vs service vs platform, stage (concept, Design Embodiment Stage, launched).
+S2 Assets — what is new: function, shape or look, process, software/AI, data, formula or know-how, names and logos, content (code, docs, media). Separate the innovation track (patent or trade secret) from the identity track (trademarks, copyright). Every business has identity IP even with no invention.
+S3 Timing & ownership — public disclosures, pitches, papers, crowdfunding, sales or offers and their dates; NDAs; whether founders, students, contractors or a university have assigned rights in writing; whether a prior-art or trademark search was done.
+S4 Market & enforcement — product life (under 3 years? over 5?), can it be reverse-engineered, would they detect copying, competitor density, countries for sales and manufacturing, ability to fund enforcement.
+S5 Money & purpose — 12-month IP budget, runway, what the IP must do (exclusivity, fundraising signal, licensing revenue, freedom to operate, deterrence, exit value).
+S6 Pathway — synthesize: a portfolio, the order to buy it in, near-term vs long-term cost, and the worth-it test.
+
+ALWAYS:
+- Do not withhold facts. If asked for a fee, deadline, rule or definition, answer accurately in one to three sentences, then connect it to their case.
+- Use their product's name and their own words.
+- Challenge common mistakes directly and kindly: "a patent stops copycats" (only if you can detect and afford to enforce); "we'll patent the app idea" (§101 risk); "we pitched it publicly, we're fine" (foreign rights); "the contractor wrote it, so we own it" (assignment); "we'll file everywhere" (PCT buys 30 months to decide); "a trademark can wait" (the name is the cheapest, most durable asset).
+- Money: separate near term (0–18 months) from long term (years 2–20), and government fees from professional fees. The worth-it test compares lifetime cost with: margin protected × years it matters × likelihood of copying × ability to detect and enforce, plus signalling value to investors and acquirers. Always name at least one thing NOT to spend on yet.
+- Accuracy: use only the fees, dates, cases and rules in the knowledge base for specifics, and state the as-of date when you quote a fee. If something is not in the knowledge base, say you are not certain and point to the official source. Never invent a case, statute, fee or statistic. Mark pending changes as pending.
+- When you cite the course flowcharts or lectures, apply the corrections listed in the knowledge base.
+- Boundaries: this is educational strategy guidance, not legal advice. For claim drafting, patentability, validity or infringement opinions, send them to a registered patent attorney or agent and tell them what to bring. Say this once when relevant, not every turn. Suggest they describe inventions at a functional level and keep confidential details for counsel.
+- United States first, international when relevant: Paris Convention 12-month priority (6 months for designs and marks), PCT, EPO absolute novelty, Unitary Patent and UPC, China first-to-file trademarks (register early if manufacturing there), Madrid Protocol, Hague designs.
+- Format: Markdown, short paragraphs, bold for key terms, bullets sparingly, a table only for costs or option comparisons.`;
+
+const MODE_RULES = {
+  learn: `MODE: LEARN (students and classes) — Socratic.
+1. Lead with questions. Every reply ends with one, at most two, focused questions about the most decision-relevant unknown. Never ask a list of questions.
+2. Before you recommend anything, ask for the user's own hypothesis ("Which protection do you think matters most here, and why?"). Then work with their reasoning: confirm what holds, and test what is weak with a concrete consequence or counter-example ("If a competitor saw your Kickstarter page, what could they file in Europe?").
+3. Work one station at a time. Recommend a portfolio only after stations 1–4 are covered.
+4. Teach while you ask: name a framework when it helps (Design Embodiment Stage, IP Strategy Flow, Freedom-to-Operate flow, Patent Legal Workflow, DREAMER, claim hierarchy, distinctiveness spectrum, first-inventor-to-file, the Coffin/Sorenson design-around, Apple vs Tesla) and ask the user to apply it to their case.
+5. Keep replies under about 170 words unless the user asks for an explanation or you are synthesizing.`,
+  decide: `MODE: DECIDE (founders and company teams) — guided, faster to a costed recommendation.
+1. Still probe, but efficiently: ask up to three short, grouped questions per turn, covering the next station or two, and skip what the user has already answered.
+2. Once stations 1–3 are known, give a provisional recommendation (what to pursue now, what to stage, what to skip) with rough near-term cost, then refine it as stations 4–5 come in. Label it provisional.
+3. Keep theory to a clause; lead with the action and say what is urgent versus what can wait (deadlines first).
+4. Ask for the user's view at decision points that depend on their judgement (budget trade-offs, which market matters most), not as a gate before every recommendation.
+5. Keep replies under about 220 words unless synthesizing.`
+};
+
+const CASE_RULE = `CASE STATE — required at the end of EVERY reply, on its own line, never mentioned to the user:
+<case>{"station":<1-6 current station>,"covered":[ids of stations with enough facts: "situation","assets","timing","market","money","pathway"],"facts":{<short label>:<short value the user actually stated, max 12 entries, keep earlier facts>},"entity":"micro"|"small"|"large"|null,"portfolio":[{"instrument":"e.g. Trademark — company name","verdict":"pursue"|"stage"|"judgement"|"skip"|"open","why":"under 12 words"}]}</case>
+Only add portfolio entries once there is a reasoned basis; use "open" while still testing a hypothesis.`;
+
+const EXTERNAL_CASE_RULE = `CASE LINE — end EVERY reply with one final line, exactly in this form (the user pastes it into the IP Advisor page to sync their case file):
+<case>{"station":<1-6>,"covered":["situation","assets","timing","market","money","pathway" — only those with enough facts],"facts":{<short label>:<short value the user stated, max 12, keep earlier facts>},"entity":"micro"|"small"|"large"|null,"portfolio":[{"instrument":"…","verdict":"pursue"|"stage"|"judgement"|"skip"|"open","why":"under 12 words"}]}</case>
+Keep it on one line, valid JSON, no code fence. Do not explain it unless asked.`;
+
+const RULES = CORE_RULES + "\n\n" + MODE_RULES.learn + "\n\n" + CASE_RULE;
+function modeRules(mode){ return MODE_RULES[mode] || MODE_RULES.learn; }
+function memoMinStations(mode){ return mode==="decide" ? 3 : 4; }
+
+const TOOL_NOTE = `\nCOST TOOL: You have an estimate_costs tool. Call it whenever you give a total or a combined range for a plan; never add fees up yourself. For a single fee, quote the knowledge base directly.`;
+const NO_TOOL_NOTE = `\nCOSTS: No calculator is available to you. Quote individual fees from the knowledge base, give totals only as rough ranges, and point the user to the page's Costs calculator or the "Draft pathway memo" button for an itemised estimate.`;
+
+function chatPreamble(caseState, withTools, mode){
+  return CORE_RULES + "\n\n" + modeRules(mode) + "\n\n" + CASE_RULE + "\n\n" + FRAMEWORKS + "\n\n" + kbDigest() + (withTools?TOOL_NOTE:NO_TOOL_NOTE) +
+    "\n\nCURRENT CASE FILE (from earlier turns): " + JSON.stringify(caseState) +
+    "\n\nToday is " + new Date().toISOString().slice(0,10) + ". The conversation follows. Reply as the advisor.";
+}
+
+/* ---- portable kit for ChatGPT, Gemini, or another Claude chat ---- */
+const PROVIDERS = {
+  chatgpt:{name:"ChatGPT", url:"https://chatgpt.com/", reuse:"a Custom GPT (Explore GPTs → Create → Configure)", reuseShort:"Custom GPT"},
+  gemini: {name:"Gemini",  url:"https://gemini.google.com/app", reuse:"a Gem (Gems → New Gem)", reuseShort:"Gem"},
+  claude: {name:"Claude",  url:"https://claude.ai/new", reuse:"a Claude Project (Projects → New project)", reuseShort:"Project"}
+};
+function externalNotes(){
+  return `\nWORKING OUTSIDE THE IP ADVISOR PAGE:
+- The knowledge base above was verified on ${KB.asOf}. If you can search the web, check official sources (uspto.gov, copyright.gov, wipo.int, epo.org) for changes after that date before quoting a fee or rule as current, and say what you checked. If you cannot, say the figures are as of ${KB.asOf}.
+- COSTS: never add fees up yourself. For any total, ask the user to open the Costs tab on the IP Advisor page, select the plan you have discussed, and paste the itemised estimate back here. Quote single fees from the knowledge base.
+- PATHWAY MEMO: when the user pastes a "MEMO REQUEST" from the page, write the memo exactly as it specifies, using its cost estimate unchanged.`;
+}
+function externalPrompt(provider, mode, caseState){
+  const P=PROVIDERS[provider]||PROVIDERS.chatgpt;
+  const hasCase = caseState && Object.keys(caseState.facts||{}).length;
+  return `Please act as the advisor described below for the rest of this chat. (Pasted from the ASU IP Strategy Advisor page; knowledge base verified ${KB.asOf}.)
+
+` + CORE_RULES + "\n\n" + modeRules(mode) + "\n\n" + EXTERNAL_CASE_RULE + "\n" + externalNotes() + "\n\n" + FRAMEWORKS + "\n\n" + kbDigest() +
+  "\n\n" + (hasCase ? "CASE FILE SO FAR (continue from here; do not re-ask what it already answers): " + JSON.stringify(caseState) + "\n\n" : "") +
+  `Today is ${new Date().toISOString().slice(0,10)}. Start now: in two or three sentences say what you will do and how ${mode==="decide"?"Decide":"Learn"} mode works, then ask your first question${hasCase?" about the next open station":""}.`;
+}
+/* Compact instructions for a Custom GPT / Gem / Claude Project (fits an ~8,000-character box); knowledge goes in the file. */
+function reusableInstructions(mode){
+  const short = CORE_RULES
+    .replace(/\n- United States first[\s\S]*?Hague designs\./, "\n- Cover international protection (PCT, EPO, Madrid, China) when the user sells or manufactures abroad.")
+    .replace(/\n- Challenge common mistakes[\s\S]*?durable asset\)\./, "\n- Challenge common mistakes: patents without enforcement, software §101 risk, public disclosure and foreign rights, missing assignments, filing everywhere, delaying trademarks.");
+  return short + "\n\n" + modeRules(mode) + "\n\n" + EXTERNAL_CASE_RULE +
+`\n\nKNOWLEDGE: Use the attached file "IP-Advisor-Knowledge-Base.md" for all fees, timelines, legal developments, course frameworks and corrections. It states its verification date; if you can search the web, check official sources for anything newer before quoting a figure as current. Never invent fees or cases.
+COSTS: never add fees up yourself; for totals ask the user to run the Costs calculator on the IP Advisor page and paste the result. When the user pastes a "MEMO REQUEST", write the memo exactly as specified.
+Open each new chat by asking who the user is and what they are building.`;
+}
+function knowledgeFile(){
+  return "# IP Strategy Advisor — knowledge file\n\nVerified " + KB.asOf + ". Re-download from the IP Advisor page each month; the page refreshes its law and fee data monthly.\n\n" +
+    FRAMEWORKS + "\n\n" + kbDigest() + "\n\nOFFICIAL SOURCES:\n" + KB.sources.map(s=>"- "+s[0]+": "+s[1]).join("\n") + "\n";
+}
+function externalMemoRequest(caseState, est){
+  const lines=[].concat(est.near.map(x=>"| Near term | "+x.item+" | "+rng(x.lo,x.hi)+" |"), est.long.map(x=>"| Long term | "+x.item+" | "+rng(x.lo,x.hi)+" |"));
+  return `MEMO REQUEST from the IP Advisor page. Using our conversation and the case file below, write my IP Pathway Memo with these ### headings in order:
+### Bottom line — three or four sentences: what to do, what not to do, total near-term commitment.
+### Your IP portfolio — table: Asset | Instrument | Verdict (Pursue now / Stage it / Judgement call / Don't invest) | Why. Cover the innovation and identity tracks.
+### What it costs — use the estimate below EXACTLY (same items and ranges), split into near term and long term, with totals; one line on what is excluded.
+### Timeline — next 30 days, 90 days, 12 months, beyond, with every hard deadline.
+### Is it worth it? — apply the worth-it test with my numbers where I gave them.
+### Where not to spend yet — at least two items with reasons.
+### Take to an IP attorney — 3–5 questions plus documents to bring.
+### Questions for your team — 2–3 questions that test the plan's biggest assumptions.
+End with: verified as of ${KB.asOf}; educational strategy guidance, not legal advice. No case line on this reply.
+
+COST ESTIMATE (${est.entityLabel}; from the page's calculator, authoritative):
+| Horizon | Item | Range |
+|---|---|---|
+${lines.join("\n")}
+Near-term total: ${rng(est.totals.nearLo,est.totals.nearHi)}. Long-term total: ${rng(est.totals.longLo,est.totals.longHi)}.
+${est.notes.join(" ")} ${est.excluded}
+
+CASE FILE: ${JSON.stringify(caseState)}`;
+}
+
+const ESTIMATE_TOOL_SCHEMA = {
+  type:"object",
+  properties:{
+    entity:{type:"string", enum:["micro","small","large"], description:"USPTO entity size"},
+    plan:{type:"array", description:"Instruments to cost", items:{type:"object", properties:{
+      type:{type:"string", enum:["provisional","utility","design","trademark","copyright","trade_secret","fto","pct","madrid","defensive_publication"]},
+      prep:{type:"string", enum:["diy","attorney"], description:"provisional only"},
+      count:{type:"number"},
+      complexity:{type:"string", enum:["very_simple","simple","some","medium","complex","very_complex","software"], description:"utility only"},
+      search:{type:"boolean"}, track_one:{type:"boolean"}, office_actions:{type:"number"}, maintain_years:{type:"number"},
+      marks:{type:"number"}, classes:{type:"number"}, clearance:{type:"boolean"}, attorney:{type:"boolean"}, intent_to_use:{type:"boolean"},
+      works:{type:"number"}, kind:{type:"string", enum:["standard","single","group"]},
+      years:{type:"number"}, density:{type:"string", enum:["low","medium","high"]},
+      countries:{type:"array", items:{type:"string"}, description:"pct only: jurisdiction codes from EP, JP, CN, KR, IN, CA"},
+      country_count:{type:"number", description:"madrid only: number of countries designated"}
+    }, required:["type"]}}
+  },
+  required:["entity","plan"]
+};
+
+function memoPlanPrompt(caseState, transcript){
+  return `You are preparing the cost inputs for an IP pathway memo. From the case file and conversation below, choose the IP plan the advisor and user have converged on (include only instruments that are "pursue now" or "stage it"; leave out ones judged not worth it).
+Reply with only JSON in this shape:
+{"entity":"micro|small|large","plan":[{"type":"provisional","prep":"diy|attorney"},{"type":"utility","complexity":"very_simple|simple|some|medium|complex|very_complex|software","track_one":false},{"type":"design","count":1},{"type":"trademark","marks":1,"classes":1,"clearance":true,"attorney":false,"intent_to_use":false},{"type":"copyright","works":1,"kind":"standard|single|group"},{"type":"trade_secret","years":5},{"type":"fto","density":"low|medium|high"},{"type":"pct","countries":["EP","JP"]},{"type":"madrid","country_count":3,"classes":1},{"type":"defensive_publication"}],"gaps":["facts still missing that would change the plan"]}
+Use small entity if unknown.
+
+CASE FILE: ${JSON.stringify(caseState)}
+
+CONVERSATION:
+${transcript}`;
+}
+
+function memoPrompt(caseState, transcript, est){
+  const costLines = []
+    .concat(est.near.map(x=>"NEAR | "+x.item+" | "+rng(x.lo,x.hi)+(x.note?" | "+x.note:"")))
+    .concat(est.long.map(x=>"LONG | "+x.item+" | "+rng(x.lo,x.hi)+(x.note?" | "+x.note:"")));
+  return CORE_RULES + "\n\n" + FRAMEWORKS + "\n\n" + kbDigest() + `
+
+TASK: Write the user's IP Pathway Memo from the case file and conversation. This memo is the synthesis at station 6, written for the user's team.
+Structure, in Markdown, with these ### headings in this order:
+### Bottom line — three or four sentences: what to do, what not to do, and the total near-term commitment.
+### Your IP portfolio — a table: Asset | Instrument | Verdict (Pursue now / Stage it / Judgement call / Don't invest) | Why. Cover both the innovation track and the identity track.
+### What it costs — two short tables, Near term (0–18 months) and Long term (years 2–20), copied EXACTLY from the cost estimate below (same items and ranges), each with its total. Then one line on what is excluded.
+### Timeline — next 30 days, next 90 days, next 12 months, beyond. Include every hard deadline (12-month provisional/priority, 30/31-month PCT, grace periods, statements of use, maintenance windows).
+### Is it worth it? — apply the worth-it test with their numbers where they gave them; say where the payoff is weakest.
+### Where not to spend yet — at least two items with reasons.
+### Take to an IP attorney — 3–5 specific questions to bring, plus what documents to bring.
+### Questions for your team — 2–3 Socratic questions that test the plan's biggest assumptions.
+End with one italic line: verified as of ${KB.asOf}; educational strategy guidance, not legal advice.
+Do not add a <case> block. 450–750 words plus tables. Use only figures from the knowledge base and the estimate.
+
+COST ESTIMATE (${est.entityLabel}; authoritative, do not change):
+${costLines.join("\n")}
+NEAR TOTAL ${rng(est.totals.nearLo, est.totals.nearHi)}
+LONG TOTAL ${rng(est.totals.longLo, est.totals.longHi)}
+${est.notes.join(" ")}
+${est.excluded}
+
+CASE FILE: ${JSON.stringify(caseState)}
+
+CONVERSATION:
+${transcript}`;
+}
+/* ======================================================================
+   APP — state, rendering, Claude calls.
+   ====================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const STORE_KEY = "ipadv.v1";
+const MAX_TURNS = 40;
+
+const blankCase = () => ({station:1, covered:[], facts:{}, entity:null, portfolio:[]});
+let S = { msgs:[], caseState:blankCase(), estimate:null, memo:null, docket:newDocket(), mode:"learn", provider:"here", calc:null };
+try { const raw = localStorage.getItem(STORE_KEY); if(raw){ const v=JSON.parse(raw); if(v && Array.isArray(v.msgs)) S = Object.assign(S, v); } } catch(e){}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} }
+function newDocket(){
+  const d=new Date(), p=n=>String(n).padStart(2,"0");
+  return "IPA-"+String(d.getFullYear()).slice(2)+p(d.getMonth()+1)+p(d.getDate())+"-"+Math.random().toString(36).slice(2,6).toUpperCase();
+}
+
+/* ---------------- markdown ---------------- */
+function inline(s){
+  return esc(s)
+    .replace(/`([^`]+)`/g,"<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function md(src){
+  const lines = String(src).replace(/\r/g,"").split("\n");
+  let out="", i=0;
+  const isTableRow = l => /^\s*\|.*\|\s*$/.test(l);
+  while(i<lines.length){
+    let l=lines[i];
+    if(!l.trim()){ i++; continue; }
+    let m;
+    if((m=l.match(/^\s{0,3}(#{1,4})\s+(.*)$/))){ const lv=m[1].length<=3?3:4; out+="<h"+lv+">"+inline(m[2])+"</h"+lv+">"; i++; continue; }
+    if(isTableRow(l) && i+1<lines.length && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i+1])){
+      const cells = r => r.trim().replace(/^\||\|$/g,"").split("|").map(c=>c.trim());
+      let h="<div class=\"tbl\"><table><thead><tr>"+cells(l).map(c=>"<th>"+inline(c)+"</th>").join("")+"</tr></thead><tbody>";
+      i+=2;
+      while(i<lines.length && isTableRow(lines[i])){ h+="<tr>"+cells(lines[i]).map(c=>"<td>"+inline(c)+"</td>").join("")+"</tr>"; i++; }
+      out+=h+"</tbody></table></div>"; continue;
+    }
+    if(/^\s*>/.test(l)){ let q=[]; while(i<lines.length && /^\s*>/.test(lines[i])){ q.push(lines[i].replace(/^\s*>\s?/,"")); i++; } out+="<blockquote>"+inline(q.join(" "))+"</blockquote>"; continue; }
+    if(/^\s*([-*•]|\d+[.)])\s+/.test(l)){
+      const ordered=/^\s*\d+[.)]\s+/.test(l); let items=[];
+      while(i<lines.length && /^\s*([-*•]|\d+[.)])\s+/.test(lines[i])){
+        let it=lines[i].replace(/^\s*([-*•]|\d+[.)])\s+/,""); i++;
+        while(i<lines.length && lines[i].trim() && /^\s{2,}\S/.test(lines[i]) && !/^\s*([-*•]|\d+[.)])\s+/.test(lines[i])){ it+=" "+lines[i].trim(); i++; }
+        items.push(it);
+      }
+      out+=(ordered?"<ol>":"<ul>")+items.map(x=>"<li>"+inline(x)+"</li>").join("")+(ordered?"</ol>":"</ul>"); continue;
+    }
+    let para=[l]; i++;
+    while(i<lines.length && lines[i].trim() && !/^\s{0,3}#{1,4}\s/.test(lines[i]) && !/^\s*([-*•]|\d+[.)])\s+/.test(lines[i]) && !isTableRow(lines[i]) && !/^\s*>/.test(lines[i])){ para.push(lines[i]); i++; }
+    out+="<p>"+para.map(inline).join("<br>")+"</p>";
+  }
+  return out;
+}
+
+/* ---------------- case block ---------------- */
+function splitCase(text){
+  const t=String(text||"");
+  const m=t.match(/<case>([\s\S]*?)<\/case>/);
+  let state=null;
+  if(m){ try{ state=JSON.parse(m[1].trim()); }catch(e){ state=null; } }
+  let visible=t.replace(/<case>[\s\S]*?(<\/case>|$)/g,"");
+  const partial=visible.lastIndexOf("<");
+  if(partial>=0 && "<case>".startsWith(visible.slice(partial))) visible=visible.slice(0,partial);
+  return {visible:visible.trim(), state};
+}
+function mergeCase(st){
+  if(!st || typeof st!=="object") return;
+  const C=S.caseState;
+  const n=Number(st.station); if(n>=1&&n<=6) C.station=n;
+  if(Array.isArray(st.covered)) C.covered=[...new Set(C.covered.concat(st.covered.filter(x=>STATIONS.some(s=>s.id===x))))];
+  if(st.facts && typeof st.facts==="object"){ for(const [k,v] of Object.entries(st.facts)){ if(v!=null && String(v).trim()) C.facts[String(k).slice(0,40)]=String(v).slice(0,160); } }
+  if(["micro","small","large"].includes(st.entity)) C.entity=st.entity;
+  if(Array.isArray(st.portfolio) && st.portfolio.length) C.portfolio=st.portfolio.slice(0,10).map(p=>({instrument:String(p.instrument||"").slice(0,80), verdict:["pursue","stage","judgement","skip","open"].includes(p.verdict)?p.verdict:"open", why:String(p.why||"").slice(0,140)}));
+}
+
+/* ---------------- rendering ---------------- */
+const VERDICT_LABEL={pursue:"Pursue now", stage:"Stage it", judgement:"Judgement call", skip:"Don't invest", open:"Testing"};
+const STARTERS=[
+  "We're a student team with a product concept for our capstone.",
+  "I'm a founder deciding whether a patent is worth it.",
+  "We're an established company planning to sell in Europe and Asia.",
+  "Is my app or AI idea patentable?",
+  "Quick question: what does a provisional patent cost right now?"
+];
+function welcomeHTML(){
+  return `<div class="welcome">
+    <div class="eyebrow" style="margin-bottom:6px">Docket ${esc(S.docket)}</div>
+    <h2>Let's work out which IP is worth paying for.</h2>
+    <p>${S.mode==="decide"
+      ? "Decide mode: I'll ask a few grouped questions, give you a provisional recommendation with rough costs once I know your situation, assets and timing, then refine it."
+      : "Learn mode: I coach by asking questions. We'll work through your situation one station at a time, and I'll ask you to reason before I recommend anything."} Either way, you finish with an itemised pathway memo of near- and long-term costs. Switch modes any time at the top.</p>
+    <div class="how">
+      <div><b>Ask</b>Six stations: situation, assets, timing, market, money, pathway.</div>
+      <div><b>${S.mode==="decide"?"Recommend":"Reason"}</b>${S.mode==="decide"?"A provisional plan early, refined as facts come in.":"You propose the strategy; I test it against current law and fees."}</div>
+      <div><b>Decide</b>Portfolio, sequence, costs, and where not to spend.</div>
+    </div>
+    <div class="starters">${STARTERS.map((s,i)=>`<button class="starter" data-s="${i}">${esc(s)}</button>`).join("")}</div>
+  </div>`;
+}
+function renderLog(streamText){
+  const L=$("#logIn");
+  let h="";
+  if(!S.msgs.length && streamText===undefined) h+=welcomeHTML();
+  S.msgs.forEach(m=>{
+    if(m.role==="user") h+=`<div class="msg me"><div class="body md">${md(m.text)}</div></div>`;
+    else h+=`<div class="msg ai"><div class="who" aria-hidden="true">IP</div><div class="body md">${md(m.text)}${m.note?`<div class="note">${esc(m.note)}</div>`:""}</div></div>`;
+  });
+  if(streamText!==undefined){
+    h+=`<div class="msg ai"><div class="who" aria-hidden="true">IP</div><div class="body md" id="live">${streamText?md(streamText):'<span class="thinking"><i></i><i></i><i></i> Thinking…</span>'}</div></div>`;
+  }
+  if(S.error) h+=`<div class="err">${esc(S.error)} <button class="btn sm" id="retryBtn" style="margin-left:6px">Retry</button></div>`;
+  L.innerHTML=h;
+  const rb=L.querySelector("#retryBtn"); if(rb) rb.onclick=()=>send();
+  L.querySelectorAll(".starter").forEach(b=>b.onclick=()=>{ $("#input").value=STARTERS[+b.dataset.s]; send(); });
+  const log=$("#log"); log.scrollTop = (!S.msgs.length && streamText===undefined) ? 0 : log.scrollHeight;
+  $("#saveChat").hidden = !(downloads && S.msgs.length);
+}
+function renderRail(){
+  const C=S.caseState;
+  $("#docket").textContent=S.docket;
+  $("#stations").innerHTML=STATIONS.map(s=>{
+    const done=C.covered.includes(s.id), now=C.station===s.n && !done;
+    return `<li class="${done?"done":""} ${now?"now":""}"><span class="st-n">${done?"✓":s.n}</span><span><span class="st-t">${esc(s.name)}</span><br><span class="st-h">${esc(s.hint)}</span></span></li>`;
+  }).join("");
+  const facts=Object.entries(C.facts);
+  $("#facts").innerHTML = facts.length ? facts.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("") + (C.entity?`<dt>USPTO entity</dt><dd>${esc(TIER_LABEL[C.entity])}</dd>`:"")
+    : `<p class="empty" style="grid-column:1/-1">Facts you share appear here as the conversation builds your case.</p>`;
+  $("#portfolio").innerHTML = C.portfolio.length ? C.portfolio.map(p=>`<div class="pi"><span class="nm">${esc(p.instrument)}</span><span class="vd ${p.verdict}">${VERDICT_LABEL[p.verdict]}</span>${p.why?`<span class="wy">${esc(p.why)}</span>`:""}</div>`).join("")
+    : `<p class="empty">Instruments show up once you've reasoned through them: trademarks, copyright, trade secrets, patents, and what to skip.</p>`;
+  const need=memoMinStations(S.mode), ready=C.covered.filter(x=>x!=="pathway").length>=need;
+  const ext=S.provider!=="here", P=PROVIDERS[S.provider];
+  $("#memoBtn").textContent = ext ? "Copy memo request for "+P.name : "Draft pathway memo";
+  $("#memoHint").textContent = ext
+    ? (S.estimate ? "Copies a memo request with your case file and the calculator's estimate. Paste it into your "+P.name+" chat." : "First pick your plan in the Costs tab, then copy the memo request into your "+P.name+" chat.")
+    : ready ? "Ready. You'll get itemised near- and long-term costs, a timeline, and a worth-it test."
+    : "Unlocks after "+(need===3?"three":"four")+" stations. Pressing it now asks the advisor what's still missing.";
+  if(S.estimate){ $("#estBox").hidden=false; $("#estNear").textContent=rng(S.estimate.totals.nearLo,S.estimate.totals.nearHi); $("#estLong").textContent=rng(S.estimate.totals.longLo,S.estimate.totals.longHi); }
+  else $("#estBox").hidden=true;
+  $("#memoReopen").hidden=!S.memo;
+  const st=STATIONS.find(s=>s.n===C.station);
+  $("#stationNow").textContent = S.msgs.length && st ? "Station "+st.n+" of 6 · "+st.name : "";
+}
+function renderLaw(){
+  const F=KB.fees, P=F.patent;
+  const prow = k => `<tr><td>${esc(P[k].label)}<span class="cfr">37 CFR ${esc(P[k].cfr)}</span></td>${P[k].fee.map(v=>"<td>"+usd(v)+"</td>").join("")}</tr>`;
+  const pkeys=["provisional","util_filing","util_search","util_exam","util_issue","maint_3_5","maint_7_5","maint_11_5","design_filing","design_search","design_exam","design_issue","track_one","rce1","cont_6yr"];
+  const T=F.trademark, tkeys=["base","insufficient","freeform","sou","sec8","sec8_9"];
+  const c=F.copyright;
+  $("#lawIn").innerHTML = `
+  <div class="card">
+    <h3>What changed recently <span class="docket">as of ${esc(KB.asOf)}</span></h3>
+    <div class="upd">${KB.updates.map(u=>`<div class="u ${u.status==="pending"?"pending":""}">
+      <div class="d">${esc(u.date)} · ${esc(u.area)}${u.status==="pending"?" · pending":""}</div>
+      <div class="t">${esc(u.title)}</div>
+      <div class="x">${esc(u.detail)}</div>
+      <div class="i"><strong>So what:</strong> ${esc(u.impact)}</div>
+      ${u.src?`<div class="s"><a href="${esc(u.src[1])}" target="_blank" rel="noopener">${esc(u.src[0])}</a></div>`:""}
+    </div>`).join("")}</div>
+  </div>
+  <div class="card">
+    <h3>USPTO patent fees</h3>
+    <div class="scroll-x"><table class="ftbl"><thead><tr><th>Fee</th><th>Large</th><th>Small</th><th>Micro</th></tr></thead><tbody>${pkeys.map(prow).join("")}</tbody></table></div>
+    <p class="disc" style="margin:8px 0 0">Micro entity: prior-year gross income ≤ ${usd(F.microIncomeLimit.value)} (from ${esc(F.microIncomeLimit.effective)}). Small: under 500 employees.</p>
+  </div>
+  <div class="card">
+    <h3>Trademark fees <span class="docket">per class</span></h3>
+    <table class="ftbl"><tbody>${tkeys.map(k=>`<tr><td>${esc(T[k].label)}</td><td>${usd(T[k].fee)}</td></tr>`).join("")}</tbody></table>
+  </div>
+  <div class="card">
+    <h3>Copyright fees <span class="docket">${c.status==="final"?"current":"change pending"}</span></h3>
+    <div class="scroll-x"><table class="ftbl"><thead><tr><th>Filing</th><th>Now</th><th>From ${esc(c.effective)}</th></tr></thead><tbody>${c.rows.map(r=>`<tr><td>${esc(r.label)}</td><td>${usd(r.now)}</td><td>${usd(r.next)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="disc" style="margin:8px 0 0">${esc(c.note)}</p>
+  </div>
+  <div class="card">
+    <h3>International <span class="docket">typical all-in</span></h3>
+    <table class="ftbl"><tbody>${Object.values(F.intl).map(x=>`<tr><td>${esc(x.label)}</td><td>${rng(x.usd[0],x.usd[1])}</td></tr>`).join("")}</tbody></table>
+  </div>
+  <div class="card">
+    <h3>Timelines and terms</h3>
+    <div class="corr" style="margin-top:0">${KB.timelines.map(t=>`<div><b>${esc(t[0])}</b>${esc(t[1])}</div>`).join("")}</div>
+  </div>
+  <div class="card">
+    <h3>Course materials, fact-checked</h3>
+    <p class="disc" style="margin:0">Where the lecture slides and flowcharts no longer match current law or fees, the advisor uses these corrections.</p>
+    <div class="corr">${KB.corrections.map(x=>`<div><b>${esc(x[0])}</b>${esc(x[1])}</div>`).join("")}</div>
+  </div>
+  <div class="card">
+    <h3>Official sources</h3>
+    <div class="srcs">${KB.sources.map(s=>`<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join("")}</div>
+    <p class="disc" style="margin:10px 0 0">Professional fee ranges are market estimates (AIPLA 2025 Economic Survey and 2026 market data). This is educational strategy guidance built on Dr. Chad Kennedy's IP I and IP II lectures, not legal advice.</p>
+  </div>`;
+  $("#asofText").textContent="Verified "+KB.asOf;
+  const pend=KB.updates.some(u=>u.status==="pending");
+  $("#asof").classList.toggle("warn",pend);
+  $("#asof").title = pend ? "Fees and law verified on "+KB.asOf+". A pending change is flagged in Law & fees." : "Fees and law verified on "+KB.asOf;
+}
+
+/* ---------------- views ---------------- */
+let view="chat", side="rail";
+const mq = window.matchMedia("(max-width: 999px)");
+function applyView(){
+  const narrow=mq.matches;
+  $("#pane-chat").hidden = narrow && view!=="chat";
+  ["rail","costs","law"].forEach(k=>{ $("#pane-"+k).hidden = narrow ? view!==k : side!==k; });
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.pane===view)));
+  document.querySelectorAll(".sideseg button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.side===side)));
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{ view=b.dataset.pane; if(view!=="chat") side=view; applyView(); });
+document.querySelectorAll(".sideseg button").forEach(b=>b.onclick=()=>{ side=b.dataset.side; applyView(); });
+mq.addEventListener ? mq.addEventListener("change",applyView) : mq.addListener(applyView);
+
+/* ---------------- capabilities ---------------- */
+let sample=null, downloads=null, toolsOK=false, busy=false, ctl=null, STANDALONE=false;
+function toast(t){ const el=$("#toast"); el.textContent=t; el.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>el.hidden=true,2600); }
+const ERR_COPY={
+  not_granted:"Claude access was declined for this page, so the advisor can't reply. The Law & fees view still works.",
+  sampling_disabled:"Claude isn't available on this account, so the advisor can't reply here.",
+  rate_limited:"You've hit a usage limit. Wait a minute, then send again.",
+  session_expired:"Your Claude session expired. Sign in again, then resend.",
+  prompt_too_large:"This conversation has grown too long. Start a new case or save the transcript first.",
+  refused:"Claude declined that message. Try rephrasing it.",
+  empty_completion:"No reply came back. Try a shorter question.",
+  invalid_json:"The memo planner returned something unreadable. Try again.",
+  upstream_error:"The connection to Claude dropped before a reply arrived. Your message is kept.",
+  invalid_request:"Claude rejected the request format. Your message is kept.",
+  transform_error:"The request couldn't be prepared. Your message is kept."
+};
+const errText = e => {
+  const code = (e && e.code) || (e && e.name) || "unknown";
+  return (ERR_COPY[code] || "Something went wrong before a reply arrived. Your message is kept.") + " (code: " + code + ")";
+};
+function logErr(where, e){ try{ console.error("[IP Advisor] "+where+" failed:", e && e.code, e && e.message, e); }catch(_){} }
+const HIDE_CODES=["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"];
+
+/* ---------------- chat ---------------- */
+function turnsForModel(){
+  const recent=S.msgs.slice(-MAX_TURNS);
+  while(recent.length && recent[0].role!=="user") recent.shift();
+  return recent.map(m=>({role:m.role, content:m.role==="assistant"?(m.raw||m.text):m.text}));
+}
+function transcript(n){
+  return S.msgs.slice(-(n||MAX_TURNS)).map(m=>(m.role==="user"?"User: ":"Advisor: ")+m.text).join("\n\n");
+}
+const estimateTool = {
+  name:"estimate_costs",
+  description:"Itemised IP cost estimate from the verified knowledge base. Returns near-term (0–18 months) and long-term (years 2–20) line items with low/high USD and totals for a plan of instruments at a USPTO entity size. Use for any total or combined range.",
+  inputSchema: ESTIMATE_TOOL_SCHEMA,
+  execute(input){
+    const est=estimateCosts(input);
+    S.estimate=est; S.calc=planToCalc(input); save(); renderRail(); renderCalc();
+    return {asOf:est.asOf, entity:est.entityLabel, near:est.near, long:est.long, totals:est.totals, notes:est.notes, excluded:est.excluded};
+  }
+};
+
+async function send(textOverride){
+  const box=$("#input");
+  const text=(textOverride||box.value).trim();
+  if(busy) return;
+  if(!sample){
+    const u=$("#unavail"); u.hidden=false; u.classList.remove("flash"); void u.offsetWidth; u.classList.add("flash");
+    toast(STANDALONE ? "This copy can't reach Claude. Choose an option above; your message is kept." : "Claude isn't available on this page yet. Your message is kept.");
+    return;
+  }
+  const last=S.msgs[S.msgs.length-1];
+  if(!text && S.error && last && last.role==="user"){ S.error=null; renderLog(""); return ask(); }
+  if(!text) return;
+  S.error=null;
+  S.msgs.push({role:"user", text}); box.value=""; autosize();
+  save(); renderLog(""); renderRail();
+  await ask();
+}
+async function ask(retried){
+  busy=true; setBusy(true);
+  ctl=new AbortController();
+  const input=[{role:"user", content:chatPreamble(S.caseState, toolsOK, S.mode)}].concat(turnsForModel());
+  const opts={cache:false, signal:ctl.signal, onText:({text})=>{ const v=splitCase(text).visible; const el=$("#live"); if(el && v) { el.innerHTML=md(v); const log=$("#log"); if(log.scrollHeight-log.scrollTop-log.clientHeight<160) log.scrollTop=log.scrollHeight; } }};
+  const usedTools=toolsOK;
+  if(usedTools) opts.tools=[estimateTool];
+  try{
+    const r=await sample(input, opts);
+    finishReply(r.text, r.truncated?"Reply was cut short. Ask me to continue.":"");
+  }catch(e){
+    logErr("chat", e);
+    const code=e && e.code;
+    /* One fallback: if the call with the cost calculator failed before any text, retry once without it. */
+    if(usedTools && !retried && !(e && e.text) && code!=="cancelled" && !HIDE_CODES.includes(code) && code!=="rate_limited" && code!=="session_expired" && code!=="refused"){
+      toolsOK=false; busy=false; setBusy(false); return ask(true);
+    }
+    if(e && e.text && e.code!=="refused") finishReply(e.text, e.code==="cancelled"?"Stopped.":"Interrupted.");
+    else if(e && e.code==="cancelled"){ renderLog(); }
+    else { S.error=errText(e); renderLog(); }
+    if(e && HIDE_CODES.includes(e.code)){ sample=null; $("#unavail").hidden=false; }
+  }finally{ busy=false; setBusy(false); save(); }
+}
+function finishReply(raw, note){
+  const {visible, state}=splitCase(raw);
+  mergeCase(state);
+  S.msgs.push({role:"assistant", text:visible||"…", raw:String(raw), note:note||""});
+  save(); renderLog(); renderRail();
+}
+function setBusy(b){
+  $("#send").hidden=b; $("#stop").hidden=!b;
+  $("#memoBtn").disabled = S.provider==="here" ? (b || !sample) : false;
+}
+$("#stop").onclick=()=>{ if(ctl) ctl.abort(); };
+$("#form").addEventListener("submit", e=>{ e.preventDefault(); send(); });
+const inputEl=$("#input");
+function autosize(){ inputEl.style.height="auto"; inputEl.style.height=Math.min(inputEl.scrollHeight,160)+"px"; }
+inputEl.addEventListener("input", autosize);
+inputEl.addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); send(); } });
+
+/* ---------------- memo ---------------- */
+function openMemo(){ $("#memoOverlay").hidden=false; $("#memoClose").focus(); }
+function closeMemo(){ $("#memoOverlay").hidden=true; }
+$("#memoClose").onclick=closeMemo;
+$("#memoOverlay").addEventListener("click", e=>{ if(e.target.id==="memoOverlay") closeMemo(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("#memoOverlay").hidden) closeMemo(); });
+$("#memoOpen").onclick=()=>{ if(S.memo){ $("#memoBody").innerHTML=md(S.memo.text); $("#memoStamp").textContent="Draft · "+S.memo.date; openMemo(); } };
+
+$("#memoBtn").onclick=async()=>{
+  if(S.provider!=="here"){
+    if(!S.estimate){ side="costs"; view="costs"; applyView(); toast("Pick your plan here first"); return; }
+    return copyText(externalMemoRequest(S.caseState, S.estimate), "Memo request copied. Paste it into "+PROVIDERS[S.provider].name+".");
+  }
+  if(busy || !sample) return;
+  const ready=S.caseState.covered.filter(x=>x!=="pathway").length>=memoMinStations(S.mode);
+  if(!ready){
+    view="chat"; applyView();
+    return send("I'd like to draft my pathway memo. What do you still need to know from me first?");
+  }
+  busy=true; setBusy(true); ctl=new AbortController();
+  const body=$("#memoBody");
+  $("#memoStamp").textContent="Drafting";
+  body.innerHTML='<span class="thinking"><i></i><i></i><i></i> Choosing the plan from your case…</span>';
+  openMemo();
+  try{
+    const tr=transcript(60);
+    const plan=await sample.json(memoPlanPrompt(S.caseState, tr), {signal:ctl.signal, cache:false});
+    if(!S.caseState.entity && plan && plan.entity) S.caseState.entity=plan.entity;
+    const est=estimateCosts({entity:(plan&&plan.entity)||S.caseState.entity||"small", plan:(plan&&plan.plan)||[]});
+    S.estimate=est; S.calc=planToCalc({entity:est.entity, plan:(plan&&plan.plan)||[]}); save(); renderRail(); renderCalc();
+    body.innerHTML='<span class="thinking"><i></i><i></i><i></i> Writing the memo…</span>';
+    const r=await sample(memoPrompt(S.caseState, tr, est), {signal:ctl.signal, cache:false,
+      onText:({text})=>{ body.innerHTML=md(text); }});
+    const date=new Date().toISOString().slice(0,10);
+    S.memo={text:r.text, date}; save(); renderRail();
+    body.innerHTML=md(r.text)+(r.truncated?'<p class="note">The memo was cut short. Close it and ask the advisor to expand any section.</p>':"");
+    $("#memoStamp").textContent="Draft · "+date;
+    S.msgs.push({role:"assistant", text:"I've drafted your pathway memo (open it from the Case file). Before you act on it: which assumption in it are you least sure of, and how could you test it this month?", raw:"", note:""});
+    save(); renderLog();
+  }catch(e){
+    logErr("memo", e);
+    if(e && e.code==="cancelled"){ body.innerHTML='<p class="note">Stopped.</p>'; }
+    else body.innerHTML='<div class="err">'+esc(errText(e))+'</div>';
+    $("#memoStamp").textContent="Not finished";
+  }finally{ busy=false; setBusy(false); }
+};
+$("#memoCopy").onclick=async()=>{
+  const t=S.memo?S.memo.text:$("#memoBody").innerText;
+  try{ await navigator.clipboard.writeText(t); toast("Memo copied"); }
+  catch(e){ const r=document.createRange(); r.selectNodeContents($("#memoBody")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Press Ctrl+C or ⌘C to copy."); }
+};
+async function saveFile(name, data){
+  if(!downloads){
+    /* Standalone file opened in a browser: plain download. */
+    try{ const url=URL.createObjectURL(new Blob([data],{type:"text/markdown"})); const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000); toast("Saved to Downloads"); }
+    catch(e){ copyText(data, "Copied instead"); }
+    return;
+  }
+  try{ await downloads.save({filename:name, data}); toast("Saved"); }
+  catch(e){ if(e && e.code==="declined") return; toast(e && e.code==="rate_limited"?"A save is already open.":"Saving isn't available here."); }
+}
+$("#memoSave").onclick=()=>{ if(S.memo) saveFile("IP-Pathway-Memo-"+S.docket+".md", "# IP Pathway Memo\n\nDocket "+S.docket+" · "+S.memo.date+"\n\n"+S.memo.text+"\n"); };
+$("#saveChat").onclick=()=>{
+  const C=S.caseState;
+  const facts=Object.entries(C.facts).map(([k,v])=>"- **"+k+":** "+v).join("\n");
+  const port=C.portfolio.map(p=>"- "+p.instrument+" — "+VERDICT_LABEL[p.verdict]+(p.why?": "+p.why:"")).join("\n");
+  const body="# IP Strategy Advisor transcript\n\nDocket "+S.docket+" · knowledge base verified "+KB.asOf+"\n\n## Case facts\n"+(facts||"_none yet_")+"\n\n## Emerging portfolio\n"+(port||"_none yet_")+"\n\n## Conversation\n\n"+S.msgs.map(m=>(m.role==="user"?"**You:** ":"**Advisor:** ")+m.text).join("\n\n")+"\n";
+  saveFile("IP-Advisor-"+S.docket+".md", body);
+};
+
+/* ---------------- new case (in-page confirm) ---------------- */
+let confirmT=null;
+$("#newCase").onclick=()=>{
+  const b=$("#newCase");
+  if(!S.msgs.length && !Object.keys(S.caseState.facts).length){ return; }
+  if(b.dataset.armed){
+    if(ctl) ctl.abort();
+    S={msgs:[], caseState:blankCase(), estimate:null, memo:null, docket:newDocket(), mode:S.mode, provider:S.provider, calc:null};
+    save(); renderLog(); renderRail(); b.textContent="New case"; delete b.dataset.armed; clearTimeout(confirmT); toast("New case opened");
+    return;
+  }
+  b.dataset.armed="1"; b.textContent="Clear this case?";
+  confirmT=setTimeout(()=>{ b.textContent="New case"; delete b.dataset.armed; },4000);
+};
+
+/* ---------------- copy helper ---------------- */
+async function copyText(text, okMsg){
+  try{ await navigator.clipboard.writeText(text); toast(okMsg||"Copied"); }
+  catch(e){ const a=$("#copyArea"); a.value=text; $("#copyOverlay").hidden=false; a.focus(); a.select(); }
+}
+$("#copyClose").onclick=()=>{ $("#copyOverlay").hidden=true; };
+$("#copyOverlay").addEventListener("click", e=>{ if(e.target.id==="copyOverlay") $("#copyOverlay").hidden=true; });
+
+/* ---------------- mode + provider ---------------- */
+function renderModeProvider(){
+  document.querySelectorAll(".seg button[data-mode]").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.mode===S.mode)));
+  $("#provider").value=S.provider;
+  const ext=S.provider!=="here";
+  $("#here").hidden=ext; $("#kit").hidden=!ext;
+  $("#saveChat").hidden = ext || !(downloads && S.msgs.length);
+  if(ext) renderKit();
+  renderRail(); setBusy(busy);
+  if(!S.msgs.length) renderLog();
+}
+document.querySelectorAll(".seg button[data-mode]").forEach(b=>b.onclick=()=>{
+  if(S.mode===b.dataset.mode) return;
+  S.mode=b.dataset.mode; save(); renderModeProvider();
+  toast(S.mode==="decide"?"Decide mode: faster to a costed recommendation":"Learn mode: questions first, you reason to the answer");
+});
+$("#provider").onchange=e=>{ S.provider=e.target.value; save(); view="chat"; applyView(); renderModeProvider(); };
+$("#goKit").onclick=()=>{ S.provider="chatgpt"; save(); renderModeProvider(); };
+$("#goClaudeKit").onclick=()=>{ S.provider="claude"; save(); renderModeProvider(); };
+
+/* ---------------- portable kit (ChatGPT, Gemini, another Claude chat) ---------------- */
+function renderKit(){
+  if(S.provider==="here") return;
+  const P=PROVIDERS[S.provider], hasCase=Object.keys(S.caseState.facts).length>0;
+  const prompt=externalPrompt(S.provider, S.mode, S.caseState);
+  $("#kitIn").innerHTML=`
+    <div class="kit-hero">
+      <div class="eyebrow" style="margin-bottom:6px">Docket ${esc(S.docket)} · ${S.mode==="decide"?"Decide":"Learn"} mode</div>
+      <h2>Use the advisor in ${esc(P.name)}</h2>
+      <p>Your ${esc(P.name)} account runs the conversation. This page supplies the advisor's instructions, the law and fee data verified ${esc(KB.asOf)}, and the cost calculator, and keeps your case file.</p>
+    </div>
+    <div class="step"><span class="n">1</span><div>
+      <h3>Copy the advisor prompt</h3>
+      <p>Paste it as the first message of a new ${esc(P.name)} chat. About ${Math.round(prompt.length/1000)}k characters${hasCase?", including the case file you've built so far":""}.</p>
+      <div class="row"><button class="btn primary" id="kitCopy">Copy advisor prompt</button><a class="btn" href="${esc(P.url)}" target="_blank" rel="noopener">Open ${esc(P.name)} ↗</a></div>
+    </div></div>
+    <div class="step"><span class="n">2</span><div>
+      <h3>Talk it through in ${esc(P.name)}</h3>
+      <p>Each reply ends with a one-line <code>&lt;case&gt;…&lt;/case&gt;</code> record of what you've covered. That line is for this page, so you can skip reading it.</p>
+    </div></div>
+    <div class="step"><span class="n">3</span><div>
+      <h3>Sync your case file</h3>
+      <p>Paste the advisor's latest reply (or the whole chat). The Case file updates from its last case line.</p>
+      <textarea id="kitPaste" aria-label="Paste a reply from your AI" placeholder="Paste a reply here…"></textarea>
+      <div class="row"><button class="btn" id="kitSync">Update case file</button><span class="small" id="kitSyncMsg"></span></div>
+    </div></div>
+    <div class="step"><span class="n">4</span><div>
+      <h3>Get exact costs and your memo</h3>
+      <p>Choose your plan in the Costs tab and copy the estimate into the chat. When you're ready, copy the memo request: it carries your case file and the itemised estimate so ${esc(P.name)} writes the memo around the right numbers.</p>
+      <div class="row"><button class="btn" id="kitCosts">Open Costs</button><button class="btn" id="kitMemo">Copy memo request</button></div>
+    </div></div>
+    <details class="step" style="display:block">
+      <summary style="cursor:pointer;font-weight:600">Make it reusable: set up ${esc(P.reuse)}</summary>
+      <p style="margin:10px 0">Instead of pasting the prompt each time, create ${esc(P.reuse)} if your plan supports it. Paste the instructions into its instructions field and add the knowledge file. Download a fresh knowledge file each month: this page's law and fee data refreshes monthly, but a copy saved in ${esc(P.name)} does not update itself.</p>
+      <div class="row"><button class="btn" id="kitInstr">Copy instructions</button><button class="btn" id="kitKb">${(downloads||STANDALONE)?"Save knowledge file (.md)":"Copy knowledge file"}</button></div>
+      <p class="small" style="margin:8px 0 0">Instructions: ${reusableInstructions(S.mode).length.toLocaleString()} characters. Knowledge file verified ${esc(KB.asOf)}.</p>
+    </details>
+    <p class="disc">Educational strategy guidance, not legal advice. Your chat happens under your own ${esc(P.name)} account and its data settings; describe inventions at a functional level.</p>`;
+  $("#kitCopy").onclick=()=>copyText(externalPrompt(S.provider, S.mode, S.caseState), "Prompt copied. Paste it into a new "+P.name+" chat.");
+  $("#kitSync").onclick=()=>{
+    const t=$("#kitPaste").value, all=[...t.matchAll(/<case>([\s\S]*?)<\/case>/g)];
+    const msg=$("#kitSyncMsg");
+    if(!all.length){ msg.textContent="No case line found. Paste the full reply, including its last line."; return; }
+    let st=null; try{ st=JSON.parse(all[all.length-1][1].trim()); }catch(e){}
+    if(!st){ msg.textContent="The case line couldn't be read. Ask the advisor to repeat its case line."; return; }
+    mergeCase(st); save(); renderRail(); msg.textContent="Case file updated.";
+    $("#kitPaste").value="";
+  };
+  $("#kitCosts").onclick=()=>{ side="costs"; view="costs"; applyView(); };
+  $("#kitMemo").onclick=()=>$("#memoBtn").click();
+  $("#kitInstr").onclick=()=>copyText(reusableInstructions(S.mode), "Instructions copied");
+  $("#kitKb").onclick=()=>{ (downloads||STANDALONE) ? saveFile("IP-Advisor-Knowledge-Base.md", knowledgeFile()) : copyText(knowledgeFile(), "Knowledge file copied"); };
+}
+
+/* ---------------- cost calculator ---------------- */
+const CALC_ITEMS=[
+  {k:"provisional", name:"Provisional patent application"},
+  {k:"utility", name:"Utility patent (non-provisional)"},
+  {k:"design", name:"Design patent"},
+  {k:"trademark", name:"Trademarks"},
+  {k:"copyright", name:"Copyright registrations"},
+  {k:"trade_secret", name:"Trade secret programme"},
+  {k:"fto", name:"Freedom-to-operate opinion"},
+  {k:"pct", name:"International patents (PCT)"},
+  {k:"madrid", name:"International trademarks (Madrid)"},
+  {k:"defensive_publication", name:"Defensive publication"}
+];
+function defaultCalc(){
+  return {entity:S.caseState.entity||"small", items:{
+    provisional:{on:false,prep:"attorney"}, utility:{on:false,complexity:"medium",track_one:false},
+    design:{on:false,count:1}, trademark:{on:false,marks:1,classes:1,clearance:true,attorney:false,intent_to_use:false},
+    copyright:{on:false,works:1,kind:"standard"}, trade_secret:{on:false,years:5}, fto:{on:false,density:"medium"},
+    pct:{on:false,countries:["EP"]}, madrid:{on:false,country_count:3,classes:1}, defensive_publication:{on:false}}};
+}
+function planToCalc(input){
+  const c=defaultCalc();
+  if(input && TI[input.entity]!==undefined) c.entity=input.entity;
+  (Array.isArray(input&&input.plan)?input.plan:[]).forEach(p=>{
+    const k=String(p.type||""); if(!c.items[k]) return;
+    const it=c.items[k]; it.on=true;
+    Object.keys(it).forEach(f=>{ if(f!=="on" && p[f]!==undefined) it[f]=p[f]; });
+    if(k==="madrid" && p.country_count===undefined && typeof p.countries==="number") it.country_count=p.countries;
+  });
+  return c;
+}
+function calcToPlan(c){
+  return {entity:c.entity, plan:CALC_ITEMS.filter(x=>c.items[x.k].on).map(x=>Object.assign({type:x.k}, c.items[x.k], {on:undefined}))};
+}
+function optsHTML(k, it){
+  const num=(f,label,min,max)=>`<label>${label} <input type="number" data-k="${k}" data-f="${f}" min="${min}" max="${max}" value="${esc(it[f])}"></label>`;
+  const chk=(f,label)=>`<label><input type="checkbox" data-k="${k}" data-f="${f}" ${it[f]?"checked":""}> ${label}</label>`;
+  const sel=(f,opts)=>`<select data-k="${k}" data-f="${f}" aria-label="${k} ${f}">${opts.map(o=>`<option value="${o[0]}" ${String(it[f])===o[0]?"selected":""}>${esc(o[1])}</option>`).join("")}</select>`;
+  switch(k){
+    case "provisional": return sel("prep",[["diy","Self-prepared"],["attorney","Attorney-prepared"]]);
+    case "utility": return sel("complexity",KB.fees.pro.byComplexity.map(c=>[c.k,c.label]))+chk("track_one","Track One (fast)");
+    case "design": return num("count","Designs",1,20);
+    case "trademark": return num("marks","Marks",1,20)+num("classes","Classes each",1,10)+chk("clearance","Clearance search")+chk("attorney","Attorney")+chk("intent_to_use","Not yet in use");
+    case "copyright": return num("works","Works",1,200)+sel("kind",[["standard","Standard"],["single","Single"],["group","Group"]]);
+    case "trade_secret": return num("years","Years",1,20);
+    case "fto": return sel("density",[["low","Sparse patent landscape"],["medium","Moderate"],["high","Crowded"]]);
+    case "pct": return ["EP","JP","CN","KR","IN","CA"].map(cc=>`<label><input type="checkbox" data-k="pct" data-cc="${cc}" ${it.countries.includes(cc)?"checked":""}> ${cc}</label>`).join("");
+    case "madrid": return num("country_count","Countries",1,60)+num("classes","Classes",1,10);
+    default: return "";
+  }
+}
+function renderCalc(){
+  if(!S.calc) S.calc=defaultCalc();
+  const c=S.calc;
+  $("#calcEntity").value=c.entity;
+  $("#calcAsOf").textContent="fees as of "+KB.asOf;
+  $("#calc").innerHTML=CALC_ITEMS.map(x=>{
+    const it=c.items[x.k];
+    return `<div class="ci ${it.on?"on":""}"><label><input type="checkbox" data-k="${x.k}" data-f="on" ${it.on?"checked":""}> ${esc(x.name)}</label>${it.on&&x.k!=="defensive_publication"?`<div class="opts">${optsHTML(x.k,it)}</div>`:""}</div>`;
+  }).join("");
+  const est=estimateCosts(calcToPlan(c));
+  const any=est.near.length||est.long.length;
+  const rows=a=>a.map(x=>`<tr><td>${esc(x.item)}${x.note?`<br><span class="small">${esc(x.note)}</span>`:""}</td><td>${rng(x.lo,x.hi)}</td></tr>`).join("");
+  $("#calcRes").innerHTML = any ? `<h4>Near term · 0–18 months</h4><table>${rows(est.near)}<tr class="tot"><td>Total</td><td>${rng(est.totals.nearLo,est.totals.nearHi)}</td></tr></table>
+    <h4>Long term · years 2–20</h4><table>${rows(est.long)}<tr class="tot"><td>Total</td><td>${rng(est.totals.longLo,est.totals.longHi)}</td></tr></table>
+    ${est.notes.length?`<p class="small">${esc(est.notes.join(" "))}</p>`:""}<p class="small">${esc(est.excluded)}</p>`
+    : `<p class="empty">Tick the protections you're weighing to see near- and long-term costs.</p>`;
+  $("#copyEst").disabled=!any;
+  S.estimate = any ? est : null;
+  renderRail();
+}
+$("#calc").addEventListener("change", e=>{
+  const t=e.target, k=t.dataset.k; if(!k) return;
+  const it=S.calc.items[k];
+  if(t.dataset.cc){ const cc=t.dataset.cc; it.countries = t.checked ? [...new Set(it.countries.concat(cc))] : it.countries.filter(x=>x!==cc); }
+  else if(t.type==="checkbox") it[t.dataset.f]=t.checked;
+  else if(t.type==="number"){ const v=Math.max(Number(t.min)||1, Math.min(Number(t.max)||99, Math.round(Number(t.value)||1))); it[t.dataset.f]=v; }
+  else it[t.dataset.f]=t.value;
+  save(); renderCalc();
+});
+$("#calcEntity").onchange=e=>{ S.calc.entity=e.target.value; save(); renderCalc(); };
+$("#copyEst").onclick=()=>{
+  const est=estimateCosts(calcToPlan(S.calc));
+  const t="IP cost estimate ("+est.entityLabel+", fees verified "+est.asOf+")\n\n| Horizon | Item | Range |\n|---|---|---|\n"+
+    est.near.map(x=>"| Near term | "+x.item+" | "+rng(x.lo,x.hi)+" |").join("\n")+"\n"+est.long.map(x=>"| Long term | "+x.item+" | "+rng(x.lo,x.hi)+" |").join("\n")+
+    "\n\nNear-term total "+rng(est.totals.nearLo,est.totals.nearHi)+"; long-term total "+rng(est.totals.longLo,est.totals.longHi)+". "+est.excluded;
+  copyText(t, "Estimate copied");
+};
+
+/* ---------------- boot ---------------- */
+renderLaw(); renderLog(); renderRail(); renderCalc(); renderModeProvider(); applyView(); autosize();
+(async function boot(){
+  if(!window.claude || typeof window.claude.use!=="function"){
+    STANDALONE=true;
+    if(S.provider==="here" && !S.msgs.length){ S.provider="chatgpt"; }
+    $("#provider").querySelector('option[value="here"]').textContent="Claude · needs claude.ai link";
+    $("#unavailText").textContent="You opened a saved copy of this page. Chat inside the page runs on your Claude sign-in, which only works when the page is opened from its claude.ai link. Open it there, or use Claude, ChatGPT or Gemini in their own chat with a copy-and-paste prompt.";
+    $("#unavail").hidden=false; setBusy(false); renderModeProvider(); return;
+  }
+  const [smp, dl, db] = await Promise.all([
+    window.claude.use("sample").catch(()=>null),
+    window.claude.use("downloads").catch(()=>null),
+    window.claude.use("db").catch(()=>null)
+  ]);
+  sample=smp; downloads=dl;
+  if(!sample){ $("#unavail").hidden=false; $("#openHosted").hidden=true; $("#unavailText").textContent="Claude chat isn't available in this view (you may be signed out, or Claude access for this page was declined). You can still use the advisor in its own Claude, ChatGPT or Gemini chat."; }
+  else { try{ const lim=await sample.limits(); toolsOK=!!(lim && lim.tools); }catch(e){ toolsOK=false; } }
+  renderModeProvider();
+  $("#memoSave").hidden=!downloads;
+  setBusy(false); renderLog(); renderRail();
+  if(db){
+    let done=false;
+    const timer=setTimeout(()=>{ done=true; },10000);
+    try{
+      const snap=await db.collection("kb").get();
+      if(!done){
+        clearTimeout(timer);
+        const by={}; snap.docs.forEach(d=>{ by[d.id]=d.data(); });
+        if(by.meta || by.updates || by.fees || by.corrections){ applyRemoteKB(by.meta, by.updates, by.fees, by.corrections); renderLaw(); renderCalc(); renderKit(); }
+      }
+    }catch(e){ clearTimeout(timer); }
+  }
+})();
+</script>
+
+</body>
+</html>
